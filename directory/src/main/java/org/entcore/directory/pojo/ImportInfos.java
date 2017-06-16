@@ -49,7 +49,7 @@ public class ImportInfos {
 	private String structureId;
 	private String structureExternalId;
 	private String overrideClass;
-	private Map<String, Object> columnsMapping;
+	private Map<String, Object> mappings;
 	private String language;
 
 	public String getFeeder() {
@@ -108,6 +108,14 @@ public class ImportInfos {
 		this.structureName = structureName;
 	}
 
+	public String getStructureName() {
+		return structureName;
+	}
+
+	public String getUAI() {
+		return UAI;
+	}
+
 	public String getStructureExternalId() {
 		return structureExternalId;
 	}
@@ -132,12 +140,12 @@ public class ImportInfos {
 		this.overrideClass = overrideClass;
 	}
 
-	public Map<String, Object> getColumnsMapping() {
-		return columnsMapping;
+	public Map<String, Object> getMappings() {
+		return mappings;
 	}
 
-	public void setColumnsMapping(JsonObject columnsMapping) {
-		this.columnsMapping = (columnsMapping != null) ? columnsMapping.toMap() : null;
+	public void setMappings(JsonObject mappings) {
+		this.mappings = (mappings != null) ? mappings.toMap() : null;
 	}
 
 	public void validate(final boolean isAdmc, final Vertx vertx, final Handler<AsyncResult<String>> handler) {

@@ -47,6 +47,7 @@ public class ProfileColumnsMapper {
 				.put("nom", "lastName")
 				.put("nomusage", "username")
 				.put("nomdusage", "username")
+				.put("nomusage", "surname")
 				.put("prenom", "firstName")
 				.put("classe", "classes")
 				.put("libelleclasse", "classes")
@@ -114,7 +115,7 @@ public class ProfileColumnsMapper {
 				.put("ignore", "ignore");
 		JsonObject studentMappings = baseMappings.copy()
 				.put("nomeleve", "lastName")
-				.put("nomdusageeleve", "username")
+				.put("nomdusageeleve", "surname")
 				.put("prenomeleve", "firstName")
 				.put("niveau", "level")
 				.put("regime", "accommodation")
@@ -132,7 +133,7 @@ public class ProfileColumnsMapper {
 				.put("persreleleve", "relative");
 		JsonObject relativeMapping = baseMappings.copy()
 				.put("nomresponsable", "lastName")
-				.put("nomusageresponsable", "username")
+				.put("nomusageresponsable", "surname")
 				.put("prenomresponsable", "firstName")
 				.put("idenfant", "childExternalId")
 				.put("childid", "childExternalId")
