@@ -186,6 +186,8 @@ public class CsvValidator extends CsvReport implements ImportValidator {
 					handler.handle(result);
 				}
 			});
+		} else {
+			handler.handle(result);
 		}
 	}
 
