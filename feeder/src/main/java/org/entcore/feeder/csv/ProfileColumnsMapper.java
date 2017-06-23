@@ -102,6 +102,7 @@ public class ProfileColumnsMapper {
 				.put("courriel", "email")
 				.put("sexe", "gender")
 				.put("ine", "ine")
+				.put("importid", "importId")
 				.put("identifiantclasse", "ignore")
 				.put("dateinscription", "ignore")
 				.put("deuxiemeprenom", "ignore")
@@ -174,7 +175,8 @@ public class ProfileColumnsMapper {
 				if (m != null) {
 					JsonObject j = new JsonObject()
 							.put("externalid", "externalId")
-							.put("childexternalid", "childExternalId");
+							.put("childexternalid", "childExternalId")
+							.put("importid", "importId");
 					for (String attr : m.fieldNames()) {
 						j.put(cleanKey(attr), m.getString(attr));
 					}
