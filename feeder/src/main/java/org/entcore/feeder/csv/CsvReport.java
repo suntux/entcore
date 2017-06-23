@@ -137,10 +137,17 @@ public class CsvReport extends Report {
 								return;
 							}
 							final CSVWriter writer = CSVUtil.getCsvWriter(p + File.separator + file, "UTF-8");
-							final String[] strings = new ArrayList<String>(header.getList()).toArray(new String[header.size()]);
+							List<String> headerList = header.getList();
+							String[] strings = headerList.toArray(new String[header.size()]);
 							final List<String> columns = new ArrayList<>();
-							writer.writeNext(strings);
 							columnsMapper.getColumsNames(file, strings, columns);
+							if (columns.contains("externalId") && !columns.contains("importId")) {
+								columns.add(1, "importId");
+								headerList.add(1, "importId");
+								strings = headerList.toArray(new String[headerList.size()]);
+							}
+							writer.writeNext(strings);
+
 							for (Object o : lines) {
 								if (!(o instanceof JsonObject)) continue;
 								final JsonObject line = (JsonObject) o;

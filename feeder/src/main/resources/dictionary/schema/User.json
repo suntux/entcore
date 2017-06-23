@@ -102,6 +102,10 @@
 		"loginAlias" : {
 			"type": "login-alias",
 			"validator": "loginAlias"
+		},
+		"importId" : {
+		  "type": "string",
+		  "validator" : "notEmpty"
 		}
 	},
 	"generate" : {
@@ -119,3 +123,4 @@
 		"otherNames", "address", "postbox", "zipCode", "city", "country", "homePhone",
 		"workPhone", "mobile", "email", "birthDate", "loginAlias"]
 }
+
