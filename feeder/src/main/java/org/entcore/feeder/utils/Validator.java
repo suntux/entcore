@@ -237,7 +237,7 @@ public class Validator {
 				if (errorsContext != null) {
 					errorsContext.addObject(new JsonObject()
 							.putString("reason", "missing.attribute")
-							.putString("attribute", i18n.translate(o.toString(), I18n.DEFAULT_DOMAIN, acceptLanguage))
+							.putString("attribute", o.toString())
 					);
 				}
 				return i18n.translate("missing.attribute", I18n.DEFAULT_DOMAIN, acceptLanguage,
@@ -429,7 +429,7 @@ public class Validator {
 				if (errorsContext != null) {
 					errorsContext.add(new JsonObject()
 							.put("reason", "invalid.value")
-							.put("attribute", i18n.translate(attr, I18n.DEFAULT_DOMAIN, acceptLanguage))
+							.put("attribute", attr)
 							.put("value", (value != null ? value.toString() : "null"))
 					);
 				}

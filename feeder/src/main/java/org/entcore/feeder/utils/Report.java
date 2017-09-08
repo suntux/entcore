@@ -110,27 +110,34 @@ public class Report {
 			softErrors = new JsonObject();
 			result.put("softErrors", softErrors);
 		}
-		JsonObject fileErrors = softErrors.getJsonObject(file);
+		JsonArray reasons = softErrors.getArray("reasons");
+		if (reasons == null) {
+			reasons = new JsonArray();
+			softErrors.putArray("reasons", reasons);
+		}
+		if (!reasons.contains(key)) {
+			reasons.addString(key);
+		}
+
+		JsonArray fileErrors = softErrors.getArray(file);
 		if (fileErrors == null) {
-			fileErrors = new JsonObject();
-			softErrors.put(file, fileErrors);
+			fileErrors = new JsonArray();
+			softErrors.putArray(file, fileErrors);
 		}
-		String cleanKey = key.replace('.','-'); // Mongo don't support '.' characters in document field's name
-		JsonObject reason = fileErrors.getJsonObject(cleanKey);
-		if (reason == null) {
-			reason = new JsonObject();
-			fileErrors.put(cleanKey, reason);
-		}
-		JsonArray lineErrors = reason.getArray(lineNumber);
-		if (lineErrors == null) {
-			lineErrors = new JsonArray();
-			reason.put(lineNumber, lineErrors);
-		}
+		JsonObject error = new JsonObject().copy()
+				.put("line",lineNumber)
+				.put("reason", key)
+				.put("attribute", errors.length > 0 ? errors[0] : "")
+				.put("value", errors.length > 1 ? errors[1] : "");
+
 		List<String> errorContext = new ArrayList<>(Arrays.asList(errors)); // Hack to support "add" operation
 		errorContext.add(0, lineNumber);
-		String error = i18n.translate(key, I18n.DEFAULT_DOMAIN, acceptLanguage, errorContext.toArray(new String[errorContext.size()]));
-		lineErrors.add(error);
-		log.error(error);
+		String translation = i18n.translate(key, I18n.DEFAULT_DOMAIN, acceptLanguage, errorContext.toArray(new String[errorContext.size()]));
+		error.put("translation", translation);
+
+		fileErrors.addObject(error);
+		log.error(translation);
+		//String cleanKey = key.replace('.','-'); // Mongo don't support '.' characters in document field's name
 	}
 
 	public void addUser(String file, JsonObject props) {
@@ -206,7 +213,7 @@ public class Report {
 		if (cleaned) {
 			modif.putBoolean(KEYS_CLEANED, true);
 		}
-		MongoDb.getInstance().update("imports", new JsonObject().putString("_id", result.getString("_id")),
+		MongoDb.getInstance().update("imports", new JsonObject().put("_id", result.getString("_id")),
 				new JsonObject().putObject("$set", modif), handler);
 	}
 
@@ -345,7 +352,7 @@ public class Report {
 					for (String attr2 : ((JsonObject) j).copy().getFieldNames()) {
 						if (attr2.contains(".")) {
 							count++;
-							((JsonObject) j).putString(
+							((JsonObject) j).put(
 									attr2.replaceAll("\\.", "_|_"), (String) ((JsonObject) j).removeField(attr2));
 						}
 					}
@@ -366,7 +373,7 @@ public class Report {
 				if (j instanceof JsonObject) {
 					for (String attr2 : ((JsonObject) j).copy().getFieldNames()) {
 						if (attr2.contains("_|_")) {
-							((JsonObject) j).putString(
+							((JsonObject) j).put(
 									attr2.replaceAll("_\\|_", "."), (String) ((JsonObject) j).removeField(attr2));
 						}
 					}
