@@ -26,7 +26,9 @@ import { DatepickerComponent,
     SimpleSelectComponent,
     MessageStickerComponent,
     MessageBoxComponent,
-    EllipsisComponent } from './components'
+    EllipsisComponent,
+    PagerComponent,
+    LengthPipe } from './components'
 import { AnchorDirective, 
     DynamicTemplateDirective,
     DynamicComponentDirective } from './directives'
@@ -63,12 +65,11 @@ import { InfiniteScrollModule } from 'ngx-infinite-scroll';
         TooltipComponent,
         WizardComponent,
         SimpleSelectComponent,
-<<<<<<< HEAD
         MessageStickerComponent,
         MessageBoxComponent,
-=======
         EllipsisComponent,
->>>>>>> 905350a... [admin] Move Ellipsis Component in share/ux
+        PagerComponent,
+        LengthPipe,
         // directives
         AnchorDirective,
         DynamicTemplateDirective,
@@ -102,13 +103,12 @@ import { InfiniteScrollModule } from 'ngx-infinite-scroll';
         StepComponent,
         TooltipComponent,
         WizardComponent,
-<<<<<<< HEAD
         MessageStickerComponent,
         MessageBoxComponent,
-=======
         SimpleSelectComponent,
         EllipsisComponent,
->>>>>>> 905350a... [admin] Move Ellipsis Component in share/ux
+        PagerComponent,
+        LengthPipe,
         // directives
         AnchorDirective,
         DynamicTemplateDirective,
