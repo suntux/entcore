@@ -2031,36 +2031,70 @@ i.fa {
   &.is-warning { color: orange; }
 }
 
-.message {
-  border: 1px solid black;
-  font-weight: bold;
-  box-shadow: 1px 1px 2px 1px #CCC; // TODO: use a color variable
+/* generic style 
+* TODO : replacce by using a css framework
+* here a bulma.io semantic is used 
+*/
 
-  p { margin : 0px ;}
-  .message-header {
-    padding: .25em;
-    background: black;
-    color:white;
-    font-size: 1.1em;
-    font-weight: bold;
-  }
-
-  .message-body {
-    padding: .5em;
-    font-size: 0.9em;
-    background: white;
-  }
-
-  &.is-success { border-color:  green; color: green;}
-  &.is-info { border-color:  blue; color: blue;}
-  &.is-danger { border-color: red; color: red;}
-  &.is-warning { border-color: orange; color: orange;}
-
-  &.is-success .message-header  { background: green;}
-  &.is-info .message-header { background: blue;}
-  &.is-danger .message-header { background: red;}
-  &.is-warning .message-header { background: orange;}
+.has-text-right {
+    text-align: right;
 }
+.container {
+    padding: .5em;
+}
+
+.message {
+    border: 2px solid black;  
+    padding : .75rem;
+    font-weight: bold; 
+
+    &.is-success { border-color:  green; color: green;}
+    &.is-info { border-color:  blue; color: blue;}
+    &.is-danger { border-color: red; color: red;}
+    &.is-warning { border-color: orange; color: orange;}
+}
+
+.button {
+    padding : .25rem;
+    border: 2px solid black;
+    font-weight: bold; 
+    border-radius: 5px;
+    align-items: center;
+    display: inline-flex;
+    cursor: pointer;
+
+    &.is-succcess { border-color: green; }
+    &.is-info { border-color: blue; }
+    &.is-danger { border-color: red; }
+    &.is-warning { border-color: orange; }
+
+    &.is-success, &.is-success.is-outlined:hover { background: green; }
+    &.is-info, &.is-info.is-outlined:hover { background: blue; }
+    &.is-danger, &.is-danger.is-outlined:hover { background: red; }
+    &.is-waring, &.is-warning.is-outlined:hover { background: orange; }
+
+    &.is-outlined { background: transparent; }
+
+    &.is-success.is-outlined{ border-color: green; color: green;}
+    &.is-info.is-outlined{ border-color: blue; color: blue;}
+    &.is-danger.is-outlined{ border-color: red; color: red;}
+    &.is-warning.is-outlined{ border-color: orange; color: orange;}
+
+    &.is-success, &.is-success.is-outlined:hover, 
+    &.is-info, &.is-info.is-outlined:hover, 
+    &.is-danger, &.is-danger.is-outlined:hover, 
+    &.is-warning, &.is-warning.is-outlined:hover { 
+        color : white ;
+        text-decoration: none; 
+    }
+
+    &[disabled], &[disabled]:hover {
+        background: $button-bg;
+        cursor: auto;
+    }
+
+}
+
 /* <table> 
 * TODO : manage fix header style
 */
@@ -2089,15 +2123,13 @@ table {
 
 /* <wizard> */
 
-
 wizard {
     background: $main-light !important;
     button {
-        background-color: $accent;
-        color: white !important;
+        background-color: $button-bg;
         padding: 10px 10px;
         &:hover {
-            background-color: $accent-dark !important;
+            background-color: $button-bg-hover ;
         }
     }
     nav.steps-progress-menu {
