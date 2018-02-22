@@ -618,7 +618,6 @@ public class CsvValidator extends CsvReport implements ImportValidator {
 						}
 						switch (profile) {
 							case "Relative":
-								JsonArray linkStudents = new fr.wseduc.webutils.collections.JsonArray();
 								if ("Intitulé".equals(strings[0]) && "Adresse Organisme".equals(strings[1])) {
 									break csvParserWhile;
 								}
@@ -718,20 +717,24 @@ public class CsvValidator extends CsvReport implements ImportValidator {
 								}
 								break;
 						}
-						String error = validator.validate(user, acceptLanguage, true);
+						JsonArray errorsContext = new JsonArray(); // Must follow that shape : [{"reason":"error.key", "attribute":"lastName", "value":""}...]
+						String error = validator.validate(user, acceptLanguage, true, errorsContext);
 						if (error != null) {
 							log.warn(error);
-							addErrorByFile(profile, "validator.errorWithLine", "" + (i+1), error); // Note that 'error' is already translated
-						} else {
-							final String classesStr = Joiner.on(", ").join(classesNames);
-							classesNamesMapping.put(user.getString("externalId"), classesStr);
-							addUser(profile, user.putString("state", translate(state.name()))
-									.put("translatedProfile", translate(profile))
-									.put("classesStr", classesStr)
-									.put("childExternalId", linkStudents)
-									.put("line", i + 1)
-							);
+							for (Object ec : errorsContext) {
+								JsonObject err = (JsonObject)ec;
+								addSoftErrorByFile(profile,
+										err.getString("reason"), "" + (i + 1), err.getString("attribute"), err.getString("value"));
+							}
 						}
+						final String classesStr = Joiner.on(", ").join(classesNames);
+						classesNamesMapping.put(user.getString("externalId"), classesStr);
+						addUser(profile, user.putString("state", translate(state.name()))
+										.putString("translatedProfile", translate(profile))
+										.putString("classesStr", classesStr)
+										.putArray("childExternalId", linkStudents)
+										.putNumber("line", i + 1)
+						);
 						i++;
 					}
 				} catch (Exception e) {
@@ -778,16 +781,6 @@ public class CsvValidator extends CsvReport implements ImportValidator {
 				}
 			}
 		});
-	}
-
-	private void relativeStudentMapping(JsonArray linkStudents, String mapping) {
-		if (mapping.trim().isEmpty()) return;
-		try {
-			String hash = Hash.sha1(mapping.getBytes("UTF-8"));
-			linkStudents.add(getOrElse(studentExternalIdMapping.get(hash), hash));
-		} catch (NoSuchAlgorithmException | UnsupportedEncodingException e) {
-			log.error(e.getMessage(), e);
-		}
 	}
 
 	public ProfileColumnsMapper getColumnsMapper() {
