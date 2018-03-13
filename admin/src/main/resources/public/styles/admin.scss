@@ -309,6 +309,7 @@ i.group_add {
     }
 }
 
+// TODO duplicated
 .container {
     background-color: white;
     padding: 10px 30px 40px 30px;
@@ -2040,6 +2041,7 @@ i.fa {
 .has-text-right {
     text-align: right;
 }
+// TODO duplicated
 .container {
     padding: .5em;
 }
@@ -2078,14 +2080,14 @@ i.fa {
 
 .button {
     padding : .25rem;
-    border: 2px solid black;
+    border: 1px solid black;
     font-weight: bold; 
     border-radius: 5px;
     align-items: center;
     display: inline-flex;
     cursor: pointer;
 
-    &.is-succcess { border-color: green; }
+    &.is-success { border-color: green; }
     &.is-info { border-color: blue; }
     &.is-danger { border-color: red; }
     &.is-warning { border-color: orange; }
@@ -2093,7 +2095,7 @@ i.fa {
     &.is-success, &.is-success.is-outlined:hover { background: green; }
     &.is-info, &.is-info.is-outlined:hover { background: blue; }
     &.is-danger, &.is-danger.is-outlined:hover { background: red; }
-    &.is-waring, &.is-warning.is-outlined:hover { background: orange; }
+    &.is-warning, &.is-warning.is-outlined:hover { background: orange; }
 
     &.is-outlined { background: transparent; }
 

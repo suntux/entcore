@@ -260,9 +260,11 @@
     "import.classesChecking.warning.create.1" : "La classe {{value}} n'a pas été reconnue ou associée à une classe existante : la classe {{value}} A sera créée  ",
     // import : step 4 : Report
     "import.report": "Rapport intermédiaires",
+    "import.report.success":"Vos fichiers sont valides, vous pouvez valider votre import !",
     "line" : "Ligne",
     "classes" : "Classe(s)",
     "operation" : "Opération",
+    "import.report.warning.hasErrors" : "Vos fichiers contienent une ou plusieurs lignes avec des erreurs. Vous pouvez les afficher en cliquant sur les bouttons ci-dessous",
     // import : step 5 : Finish
     "import.finish":"Import terminé",
     // import : cancel
@@ -273,6 +275,9 @@
     // import : warning
     "import.file.warning" : "Ce fichier contient des avertissements qui ne bloque pas le chargement du fichier",
     "import.global.warning" : "Les avertissements sont affichées en orange avec ce symboles : <i class=\"fa fa-exclamation-circle is-warning\"></i> Vous pouvez passer à l'étape suivante.",
+    "import.warning.":"",
+    "missing.student.soft" : "Élève inconnu",
+    "missing.student.soft.message" : "Votre fichier contient <strong>{{errorNumber}}  parent(s) avec des élèves non reconnus</strong>. Si vous poursuivez l'import, le compte parent sera créé mais sans lien avec le compte élève.",
     // import : errors
     "import.error.importIdNotFound":"La référence de l'import est inconnue",
     "import.error.noColumnsMappingFound":"Les données d'association de champs de colonnes sont indisponible. Vérifier que vos fichiers possèdes bien une ligne d'entête",
@@ -281,8 +286,10 @@
     "import.error.malformedFiles": "Les erreurs affichées en rouge bloquent l'import des fichiers : <strong>Vous devez renouveler le chargement des fichiers</strong>",
     "import.error.requieredFieldNotFound.global":"Nous n'avons pas trouver un ou plusieurs champs obligatoires dans ce fichier. <strong>Vous devez procéder à une association manuelle</strong>",
     "import.error.requieredFieldNotFound":"Champ(s) obligatoire(s) manquant(s) : <strong>{{fields}}</strong>.",
-    // import : warning
-    "import.warning.":"",
+    "missing.attribute": "Attribut manquant",
+    "missing.attribute.message": "<strong>{{errorNumber}} ligne(s) contiennent un ou plusieurs champs obligatoire et non renseigné</strong>",
+    "invalid.value" : "Valeur invalide",
+    "invalid.value.message" : "<strong>{{errorNumber}} ligne(s) contiennent un ou plusieurs champs renseigné avec une valeur invalide (ex : mauvaise format de date de naisssance)</strong>",
     //import : info
     "import.info.file.0": "Notice d'utilisation de l'import de fichier CSV",
     "import.info.file.1":"Si vous souhaitez importer des utilisateurs à partir de fichiers csv constitués à la main ou issus d’un logiciel, vous devez suivre les consignes suivantes :",
