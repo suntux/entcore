@@ -20,10 +20,11 @@ export const icons = {
                 </p>
             </div>
             <div class="message-body">
-            <i *ngIf="canHide() && !header" (click)="hidden = true" class="fa fa-times-circle"></i>
+                <i *ngIf="canHide() && !header" (click)="hidden = true" class="fa fa-times-circle"></i>
                 <p *ngFor="let message of messages"> 
                     <s5l [s5l-params]="message[1]">{{message[0]}}</s5l>
                 </p>
+                <ng-content></ng-content>
             </div>
         </article>
         `,
@@ -61,7 +62,6 @@ export class MessageBoxComponent implements OnInit {
                 this._messages.push([m,{}]);
             else if (typeof m == "object") {
                 this._messages.push(m);
-                console.log (m[0] + " : " + m[1])
             }
         }
     };
