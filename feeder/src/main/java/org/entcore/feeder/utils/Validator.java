@@ -138,7 +138,7 @@ public class Validator {
 					if (!"ignore".equals(err)) {
 						log.info(err);
 					}
-					if (errorsContext == null) object.removeField(attr); // Remove if value is invalid except during CSV feeding.
+					if (errorsContext == null) object.remove(attr); // Remove if value is invalid except during CSV feeding.
 					continue;
 				}
 				if (value instanceof JsonArray) {
@@ -235,9 +235,9 @@ public class Validator {
 		for (Object o : required) {
 			if (!m.containsKey(o.toString())) {
 				if (errorsContext != null) {
-					errorsContext.addObject(new JsonObject()
-							.putString("reason", "missing.attribute")
-							.putString("attribute", o.toString())
+					errorsContext.add(new JsonObject()
+							.put("reason", "missing.attribute")
+							.put("attribute", o.toString())
 					);
 				}
 				return i18n.translate("missing.attribute", I18n.DEFAULT_DOMAIN, acceptLanguage,

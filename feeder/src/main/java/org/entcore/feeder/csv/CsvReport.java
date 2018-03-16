@@ -24,12 +24,12 @@ import fr.wseduc.webutils.DefaultAsyncResult;
 import org.entcore.feeder.exceptions.ValidationException;
 import org.entcore.feeder.utils.CSVUtil;
 import org.entcore.feeder.utils.Report;
-import org.vertx.java.core.AsyncResult;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.Vertx;
-import org.vertx.java.core.file.FileSystem;
-import org.vertx.java.core.json.JsonArray;
-import org.vertx.java.core.json.JsonObject;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
+import io.vertx.core.file.FileSystem;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
 
 import java.io.File;
 import java.io.IOException;
@@ -51,8 +51,8 @@ public class CsvReport extends Report {
 		super(importInfos.getString("language", "fr"));
 		final String importId = importInfos.getString("id");
 		if (isNotEmpty(importId)) {
-			importInfos.putString("_id", importId);
-			importInfos.removeField("id");
+			importInfos.put("_id", importId);
+			importInfos.remove("id");
 		}
 		result.mergeIn(importInfos);
 		if (result.getBoolean(KEYS_CLEANED, false)) {
@@ -63,63 +63,63 @@ public class CsvReport extends Report {
 	}
 
 	public void addHeader(String profile, JsonArray h) {
-		JsonObject headers = result.getObject(HEADERS);
+		JsonObject headers = result.getJsonObject(HEADERS);
 		if (headers == null) {
 			headers = new JsonObject();
-			result.putObject(HEADERS, headers);
+			result.put(HEADERS, headers);
 		}
-		JsonArray header = new JsonArray();
+		JsonArray header = new fr.wseduc.webutils.collections.JsonArray();
 		for (int i = 0; i < h.size(); i++) {
-			final String v = h.get(i);
+			final String v = h.getString(i);
 			if (isNotEmpty(v)) {
 				header.add(v);
 			}
 		}
-		headers.putArray(profile, header);
+		headers.put(profile, header);
 	}
 
 	public void addMapping(String profile, JsonObject mapping) {
-		JsonObject mappings = result.getObject(MAPPINGS);
+		JsonObject mappings = result.getJsonObject(MAPPINGS);
 		if (mappings == null) {
 			mappings = new JsonObject();
-			result.putObject(MAPPINGS, mappings);
+			result.put(MAPPINGS, mappings);
 		}
-		mappings.putObject(profile, mapping);
+		mappings.put(profile, mapping);
 	}
 
 	public JsonObject getMappings() {
-		return result.getObject(MAPPINGS);
+		return result.getJsonObject(MAPPINGS);
 	}
 
 	public void setMappings(JsonObject mappings) {
 		if (mappings != null && mappings.size() > 0) {
-			result.putObject(MAPPINGS, mappings);
+			result.put(MAPPINGS, mappings);
 		}
 	}
 
 	public void setClassesMapping(JsonObject mapping) {
 		if (mapping != null && mapping.size() > 0) {
-			result.putObject(CLASSES_MAPPING, mapping);
+			result.put(CLASSES_MAPPING, mapping);
 		}
 	}
 
 	public JsonObject getClassesMapping(String profile) {
-		final JsonObject cm = result.getObject(CLASSES_MAPPING);
+		final JsonObject cm = result.getJsonObject(CLASSES_MAPPING);
 		if (cm != null) {
-			return cm.getObject(profile);
+			return cm.getJsonObject(profile);
 		}
 		return null;
 	}
 
 	public JsonObject getClassesMappings() {
-		return result.getObject(CLASSES_MAPPING);
+		return result.getJsonObject(CLASSES_MAPPING);
 	}
 
 	public void exportFiles(final Handler<AsyncResult<String>> handler) {
 		final String path = result.getString("path");
 		final String structureName = result.getString("structureName");
-		final JsonObject headers = result.getObject(HEADERS);
-		final JsonObject files = result.getObject(FILES);
+		final JsonObject headers = result.getJsonObject(HEADERS);
+		final JsonObject files = result.getJsonObject(FILES);
 		if (files == null || isEmpty(path) || isEmpty(structureName) || headers == null) {
 			handler.handle(new DefaultAsyncResult<String>(new ValidationException("missing.arguments")));
 			return;
@@ -131,20 +131,20 @@ public class CsvReport extends Report {
 				(isNotEmpty(structureExternalId) ? "@" + structureExternalId: "") +
 				(isNotEmpty(UAI) ? "_" + UAI : ""));
 //				.replaceFirst("tmp", "tmp/test");
-		fs.mkdir(p, true, new Handler<AsyncResult<Void>>() {
+		fs.mkdirs(p, new Handler<AsyncResult<Void>>() {
 			@Override
 			public void handle(AsyncResult<Void> event) {
 				try {
 					if (event.succeeded()) {
-						for (String file : files.getFieldNames()) {
-							final JsonArray header = headers.getArray(file);
-							final JsonArray lines = files.getArray(file);
+						for (String file : files.fieldNames()) {
+							final JsonArray header = headers.getJsonArray(file);
+							final JsonArray lines = files.getJsonArray(file);
 							if (lines == null || lines.size() == 0 || header == null || header.size() == 0) {
 								handler.handle(new DefaultAsyncResult<String>(new ValidationException("missing.file." + file)));
 								return;
 							}
 							final CSVWriter writer = CSVUtil.getCsvWriter(p + File.separator + file, "UTF-8");
-							final String[] strings = new ArrayList<String>(header.toList()).toArray(new String[header.size()]);
+							final String[] strings = new ArrayList<String>(header.getList()).toArray(new String[header.size()]);
 							final List<String> columns = new ArrayList<>();
 							writer.writeNext(strings);
 							columnsMapper.getColumsNames(file, strings, columns);
@@ -168,7 +168,7 @@ public class CsvReport extends Report {
 									} else if (v instanceof JsonArray) {
 										if (((JsonArray) v).size() > count) {
 											//if (column.startsWith("child")) {
-												l[i] = cleanStructure(((JsonArray) v).<String>get(count));
+												l[i] = cleanStructure(((JsonArray) v).getString(count));
 //											} else {
 //												l[i] = ((JsonArray) v).<String>get(count);
 //											}
@@ -216,32 +216,32 @@ public class CsvReport extends Report {
 		int count = 0;
 		count += cleanAttributeKeys(getClassesMappings());
 		count += cleanAttributeKeys(getMappings());
-		count += cleanAttributeKeys(result.getObject("errors"));
+		count += cleanAttributeKeys(result.getJsonObject("errors"));
 		if (count > 0) {
-			result.putBoolean(KEYS_CLEANED, true);
+			result.put(KEYS_CLEANED, true);
 		}
 	}
 
 	@Override
 	protected boolean updateCleanKeys() {
-		return (cleanAttributeKeys(result.getObject("errors")) + cleanAttributeKeys(result.getObject("softErrors"))) > 0;
+		return (cleanAttributeKeys(result.getJsonObject("errors")) + cleanAttributeKeys(result.getJsonObject("softErrors"))) > 0;
 	}
 
 	protected void uncleanKeys() {
 		uncleanAttributeKeys(getClassesMappings());
 		uncleanAttributeKeys(getMappings());
-		uncleanAttributeKeys(result.getObject("errors"));
-		result.removeField(KEYS_CLEANED);
+		uncleanAttributeKeys(result.getJsonObject("errors"));
+		result.remove(KEYS_CLEANED);
 	}
 
 	protected void clearBeforeValidation() {
-		result.putObject("errors", new JsonObject())
-				.putObject(FILES, new JsonObject())
-				.putObject("softErrors", new JsonObject());
+		result.put("errors", new JsonObject())
+				.put(FILES, new JsonObject())
+				.put("softErrors", new JsonObject());
 	}
 
 	protected void setSeed(long seed) {
-		result.putNumber("seed", seed);
+		result.put("seed", seed);
 	}
 
 	protected Long getSeed() {
@@ -250,7 +250,7 @@ public class CsvReport extends Report {
 
 //	protected void setStructureExternalIdIfAbsent(String structureExternalId) {
 //		if (isEmpty(result.getString("structureExternalId"))) {
-//			result.putString("structureExternalId", structureExternalId);
+//			result.put("structureExternalId", structureExternalId);
 //		}
 //	}
 

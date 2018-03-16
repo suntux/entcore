@@ -87,13 +87,13 @@ public class CsvValidator extends CsvReport implements ImportValidator {
 					final String query =
 							"MATCH (s:Structure {externalId:{externalId}})<-[:BELONGS]-(c:Class) " +
 							"RETURN COLLECT(DISTINCT c.name) as classes";
-					final JsonObject params = new JsonObject().putString("externalId", getStructureExternalId());
+					final JsonObject params = new JsonObject().put("externalId", getStructureExternalId());
 					TransactionManager.getNeo4jHelper().execute(query, params, new Handler<Message<JsonObject>>() {
 						@Override
 						public void handle(Message<JsonObject> event) {
-							final JsonArray r = event.body().getArray("result");
-							if ("ok".equals(event.body().getString("status")) && r != null && r.size() > 0 && r.get(0) != null) {
-								final JsonArray classes = r.<JsonObject>get(0).getArray("classes");
+							final JsonArray r = event.body().getJsonArray("result");
+							if ("ok".equals(event.body().getString("status")) && r != null && r.size() > 0 && r.getJsonObject(0) != null) {
+								final JsonArray classes = r.getJsonObject(0).getJsonArray("classes");
 								mapClasses(classes);
 							} else {
 								addError("error.database.classes");
@@ -120,27 +120,27 @@ public class CsvValidator extends CsvReport implements ImportValidator {
 			Set<String> profileClasses = profilesClassesMapping.get(profile);
 			if (profileClasses == null || profileClasses.size() == 0) continue;
 			JsonObject mapping = new JsonObject();
-			classesMapping.putObject(profile, mapping);
+			classesMapping.put(profile, mapping);
 			for (String c: profileClasses) {
 				if (!"Student".equals(profile) && studentClasses.contains(c)) {
-					mapping.putString(c, c);
+					mapping.put(c, c);
 				} else {
-					mapping.putString(c, "");
+					mapping.put(c, "");
 				}
 			}
 		}
 
 		// 2 : Maps profile's classes against dbClasses
 		if (classes != null && classes.size() > 0) {
-			for (String profile : classesMapping.getFieldNames()) {
-				JsonObject profileClassesMapping = classesMapping.getObject(profile);
-				for (String _class : profileClassesMapping.getFieldNames()) {
+			for (String profile : classesMapping.fieldNames()) {
+				JsonObject profileClassesMapping = classesMapping.getJsonObject(profile);
+				for (String _class : profileClassesMapping.fieldNames()) {
 					if (classes.contains(_class)) {
-						profileClassesMapping.putString(_class, _class);
+						profileClassesMapping.put(_class, _class);
 					}
 				}
 			}
-			classesMapping.putArray("dbClasses", classes);
+			classesMapping.put("dbClasses", classes);
 		}
 		setClassesMapping(classesMapping);
 	}
@@ -366,7 +366,7 @@ public class CsvValidator extends CsvReport implements ImportValidator {
 			int i = 0;
 			while ((strings = csvParser.readNext()) != null) {
 				if (i == 0) {
-					addHeader(profile, new JsonArray(strings));
+					addHeader(profile, new fr.wseduc.webutils.collections.JsonArray(Arrays.asList(strings)));
 					JsonArray invalidColumns = columnsMapper.getColumsNames(profile, strings, columns);
 					if (invalidColumns.size() > 0) {
 						parseErrors("invalid.column", invalidColumns, profile, handler);
@@ -507,7 +507,7 @@ public class CsvValidator extends CsvReport implements ImportValidator {
 //						}
 						final JsonArray classesNames = new fr.wseduc.webutils.collections.JsonArray();
 						JsonObject user = new JsonObject();
-						JsonArray linkStudents = new JsonArray();
+						JsonArray linkStudents = new fr.wseduc.webutils.collections.JsonArray();
 						user.put("structures", new fr.wseduc.webutils.collections.JsonArray().add(structure.getExternalId()));
 						user.put("profiles", new fr.wseduc.webutils.collections.JsonArray().add(profile));
 						List<String[]> classes = new ArrayList<>();
@@ -709,7 +709,7 @@ public class CsvValidator extends CsvReport implements ImportValidator {
 									if (!(obj instanceof String)) continue;
 									final String s = classesNamesMapping.get((String) obj);
 									if (s != null) {
-										classesNames.addString(s);
+										classesNames.add(s);
 									}
 								}
 								if (classesNames.size() == 0) {
@@ -719,7 +719,7 @@ public class CsvValidator extends CsvReport implements ImportValidator {
 								}
 								break;
 						}
-						JsonArray errorsContext = new JsonArray(); // Must follow that shape : [{"reason":"error.key", "attribute":"lastName", "value":""}...]
+						JsonArray errorsContext = new fr.wseduc.webutils.collections.JsonArray(); // Must follow that shape : [{"reason":"error.key", "attribute":"lastName", "value":""}...]
 						String error = validator.validate(user, acceptLanguage, true, errorsContext);
 						if (error != null) {
 							for (Object ec : errorsContext) {
@@ -730,11 +730,11 @@ public class CsvValidator extends CsvReport implements ImportValidator {
 						}
 						final String classesStr = Joiner.on(", ").join(classesNames);
 						classesNamesMapping.put(user.getString("externalId"), classesStr);
-						addUser(profile, user.putString("state", translate(state.name()))
-										.putString("translatedProfile", translate(profile))
-										.putString("classesStr", classesStr)
-										.putArray("childExternalId", linkStudents)
-										.putNumber("line", i + 1)
+						addUser(profile, user.put("state", translate(state.name()))
+										.put("translatedProfile", translate(profile))
+										.put("classesStr", classesStr)
+										.put("childExternalId", linkStudents)
+										.put("line", i + 1)
 						);
 						i++;
 					}

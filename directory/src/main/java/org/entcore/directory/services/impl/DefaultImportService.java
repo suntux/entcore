@@ -75,7 +75,7 @@ public class DefaultImportService implements ImportService {
 								f.put("softErrors", r.getJsonObject("softErrors"));
 							}
 							if (isNotEmpty(r.getString("_id"))) {
-								f.putString("importId", r.getString("_id"));
+								f.put("importId", r.getString("_id"));
 							}
 							handler.handle(new Either.Right<JsonObject, JsonObject>(f));
 						}
@@ -95,7 +95,7 @@ public class DefaultImportService implements ImportService {
 
 	@Override
 	public void validate(String importId, final Handler<Either<JsonObject, JsonObject>> handler) {
-		JsonObject action = new JsonObject().putString("action", "validateWithId").putString("id", importId);
+		JsonObject action = new JsonObject().put("action", "validateWithId").put("id", importId);
 		sendCommand(handler, action);
 	}
 
@@ -129,7 +129,7 @@ public class DefaultImportService implements ImportService {
 
 	@Override
 	public void doImport(String importId, final Handler<Either<JsonObject, JsonObject>> handler) {
-		JsonObject action = new JsonObject().putString("action", "importWithId").putString("id", importId);
+		JsonObject action = new JsonObject().put("action", "importWithId").put("id", importId);
 		sendCommand(handler, action);
 	}
 
@@ -137,11 +137,11 @@ public class DefaultImportService implements ImportService {
 	public void columnsMapping(ImportInfos importInfos, final Handler<Either<JsonObject, JsonObject>> handler) {
 		try {
 			JsonObject action = new JsonObject(mapper.writeValueAsString(importInfos))
-					.putString("action", "columnsMapping");
+					.put("action", "columnsMapping");
 			sendCommand(handler, action);
 		} catch (JsonProcessingException e) {
 			handler.handle(new Either.Left<JsonObject, JsonObject>(new JsonObject()
-					.putArray("global", new JsonArray().addString("unexpected.error"))));
+					.put("global", new fr.wseduc.webutils.collections.JsonArray().add("unexpected.error"))));
 			log.error(e.getMessage(), e);
 		}
 	}
@@ -150,19 +150,19 @@ public class DefaultImportService implements ImportService {
 	public void classesMapping(ImportInfos importInfos, final Handler<Either<JsonObject, JsonObject>> handler) {
 		try {
 			JsonObject action = new JsonObject(mapper.writeValueAsString(importInfos))
-					.putString("action", "classesMapping");
+					.put("action", "classesMapping");
 			sendCommand(handler, action);
 		} catch (JsonProcessingException e) {
 			handler.handle(new Either.Left<JsonObject, JsonObject>(new JsonObject()
-					.putArray("global", new JsonArray().addString("unexpected.error"))));
+					.put("global", new fr.wseduc.webutils.collections.JsonArray().add("unexpected.error"))));
 			log.error(e.getMessage(), e);
 		}
 	}
 
 	@Override
 	public void addLine(String importId, String profile, JsonObject line, Handler<Either<String, JsonObject>> handler) {
-		final JsonObject query = new JsonObject().putString("_id", importId);
-		final JsonObject update = new JsonObject().putObject("$push", new JsonObject().putObject("files." + profile, line));
+		final JsonObject query = new JsonObject().put("_id", importId);
+		final JsonObject update = new JsonObject().put("$push", new JsonObject().put("files." + profile, line));
 		mongo.update(IMPORTS, query, update, MongoDbResult.validActionResultHandler(handler));
 	}
 
@@ -171,48 +171,48 @@ public class DefaultImportService implements ImportService {
 		Integer lineId = line.getInteger("line");
 		if (defaultValidationParamsNull(handler, lineId)) return;
 		JsonObject item = new JsonObject();
-		for (String attr : line.getFieldNames()) {
+		for (String attr : line.fieldNames()) {
 			if ("line".equals(attr)) continue;
-			item.putValue("files." + profile + ".$." + attr, line.getValue(attr));
+			item.put("files." + profile + ".$." + attr, line.getValue(attr));
 		}
 //		db.imports.update({"_id" : "8ff9a53f-a216-49f2-97cf-7ccc41c6e2b6", "files.Relative.line" : 147}, {$set : {"files.Relative.$.state" : "bla"}})
-		final JsonObject query = new JsonObject().putString("_id", importId).putNumber("files." + profile + ".line", lineId);
-		final JsonObject update = new JsonObject().putObject("$set", item);
+		final JsonObject query = new JsonObject().put("_id", importId).put("files." + profile + ".line", lineId);
+		final JsonObject update = new JsonObject().put("$set", item);
 		mongo.update(IMPORTS, query, update, MongoDbResult.validActionResultHandler(handler));
 	}
 
 	@Override
 	public void deleteLine(String importId, String profile, Integer line, Handler<Either<String, JsonObject>> handler) {
-		final JsonObject query = new JsonObject().putString("_id", importId).putNumber("files." + profile + ".line", line);
-		final JsonObject update = new JsonObject().putObject("$pull", new JsonObject()
-				.putObject("files." + profile, new JsonObject().putNumber("line", line)));
+		final JsonObject query = new JsonObject().put("_id", importId).put("files." + profile + ".line", line);
+		final JsonObject update = new JsonObject().put("$pull", new JsonObject()
+				.put("files." + profile, new JsonObject().put("line", line)));
 		mongo.update(IMPORTS, query, update, MongoDbResult.validActionResultHandler(handler));
 	}
 
 	public void findById(String importId, Handler<Either<String,JsonObject>> handler) {
 		mongo.findOne("imports",
-				new JsonObject().putString("_id", importId),
+				new JsonObject().put("_id", importId),
 				MongoDbResult.validActionResultHandler(handler));
 	}
 
 	protected void sendCommand(final Handler<Either<JsonObject, JsonObject>> handler, JsonObject action) {
-		eb.send("entcore.feeder", action, new Handler<Message<JsonObject>>() {
+		eb.send("entcore.feeder", action, handlerToAsyncHandler(new Handler<Message<JsonObject>>() {
 			@Override
 			public void handle(Message<JsonObject> event) {
 				if ("ok".equals(event.body().getString("status"))) {
-					JsonObject r = event.body().getObject("result", new JsonObject());
-					r.removeField("status");
-					if (r.getObject("errors", new JsonObject()).size() > 0) {
+					JsonObject r = event.body().getJsonObject("result", new JsonObject());
+					r.remove("status");
+					if (r.getJsonObject("errors", new JsonObject()).size() > 0) {
 						handler.handle(new Either.Left<JsonObject, JsonObject>(r));
 					} else {
 						handler.handle(new Either.Right<JsonObject, JsonObject>(r));
 					}
 				} else {
-					handler.handle(new Either.Left<JsonObject, JsonObject>(new JsonObject().putArray("global",
-							new JsonArray().addString(event.body().getString("message", "")))));
+					handler.handle(new Either.Left<JsonObject, JsonObject>(new JsonObject().put("global",
+							new fr.wseduc.webutils.collections.JsonArray().add(event.body().getString("message", "")))));
 				}
 			}
-		});
+		}));
 	}
 
 }

@@ -457,7 +457,7 @@ public class StructureController extends BaseController {
 				}
 
 				StringReader reader = new StringReader(result.result().toString("UTF-8"));
-				final JsonArray mailHeaders = new JsonArray().add(
+				final JsonArray mailHeaders = new fr.wseduc.webutils.collections.JsonArray().add(
 						new JsonObject().put("name", "Content-Type").put("value", "text/html; charset=\"UTF-8\""));
 
 				for(Object userObj : users){

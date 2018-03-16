@@ -332,8 +332,8 @@ public class Feeder extends BusModBase implements Handler<Message<JsonObject>> {
 			@Override
 			public void handle(JsonObject event) {
 				if (!v.containsErrors()) {
-					JsonObject result = new JsonObject().putObject("result", v.getResult());
-					result.getObject("result").removeField("errors");
+					JsonObject result = new JsonObject().put("result", v.getResult());
+					result.getJsonObject("result").remove("errors");
 					sendOK(message, result);
 				} else {
 					sendError(message, "classes.mapping.error");
@@ -355,9 +355,9 @@ public class Feeder extends BusModBase implements Handler<Message<JsonObject>> {
 					event.result().exportIfValid(new Handler<JsonObject>() {
 						@Override
 						public void handle(JsonObject event) {
-							final JsonObject errors = event.getObject("errors");
+							final JsonObject errors = event.getJsonObject("errors");
 							if (errors != null && errors.size() > 0) {
-								sendOK(message, new JsonObject().putObject("result", event));
+								sendOK(message, new JsonObject().put("result", event));
 							} else {
 								message.body().mergeIn(event);
 								launchImport(message);
@@ -384,7 +384,7 @@ public class Feeder extends BusModBase implements Handler<Message<JsonObject>> {
 					event.result().validate(new Handler<JsonObject>() {
 						@Override
 						public void handle(JsonObject event2) {
-							sendOK(message, new JsonObject().putObject("result", ((Report) event.result()).getResult()));
+							sendOK(message, new JsonObject().put("result", ((Report) event.result()).getResult()));
 						}
 					});
 				} else {
@@ -400,11 +400,11 @@ public class Feeder extends BusModBase implements Handler<Message<JsonObject>> {
 		v.columnsMapping(path, new Handler<JsonObject>() {
 			@Override
 			public void handle(JsonObject event) {
-				JsonObject result = new JsonObject().putObject("result",
-						v.getResult().putObject("availableFields", v.getColumnsMapper().availableFields())
+				JsonObject result = new JsonObject().put("result",
+						v.getResult().put("availableFields", v.getColumnsMapper().availableFields())
 				);
 				if (!v.containsErrors()) {
-					result.getObject("result").removeField("errors");
+					result.getJsonObject("result").remove("errors");
 				}
 				sendOK(message, result);
 			}

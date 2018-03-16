@@ -34,11 +34,7 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 public class Report {
 
@@ -110,19 +106,19 @@ public class Report {
 			softErrors = new JsonObject();
 			result.put("softErrors", softErrors);
 		}
-		JsonArray reasons = softErrors.getArray("reasons");
+		JsonArray reasons = softErrors.getJsonArray("reasons");
 		if (reasons == null) {
-			reasons = new JsonArray();
-			softErrors.putArray("reasons", reasons);
+			reasons = new fr.wseduc.webutils.collections.JsonArray();
+			softErrors.put("reasons", reasons);
 		}
 		if (!reasons.contains(key)) {
-			reasons.addString(key);
+			reasons.add(key);
 		}
 
-		JsonArray fileErrors = softErrors.getArray(file);
+		JsonArray fileErrors = softErrors.getJsonArray(file);
 		if (fileErrors == null) {
-			fileErrors = new JsonArray();
-			softErrors.putArray(file, fileErrors);
+			fileErrors = new fr.wseduc.webutils.collections.JsonArray();
+			softErrors.put(file, fileErrors);
 		}
 		JsonObject error = new JsonObject().copy()
 				.put("line",lineNumber)
@@ -135,7 +131,7 @@ public class Report {
 		String translation = i18n.translate(key, I18n.DEFAULT_DOMAIN, acceptLanguage, errorContext.toArray(new String[errorContext.size()]));
 		error.put("translation", translation);
 
-		fileErrors.addObject(error);
+		fileErrors.add(error);
 		log.error(translation);
 		//String cleanKey = key.replace('.','-'); // Mongo don't support '.' characters in document field's name
 	}
@@ -181,7 +177,7 @@ public class Report {
 
 	public JsonArray getUsersExternalId() {
 		final JsonArray res = new fr.wseduc.webutils.collections.JsonArray();
-		for (String f : result.getJsonObject(FILES).getFieldNames()) {
+		for (String f : result.getJsonObject(FILES).fieldNames()) {
 			JsonArray a = result.getJsonObject(FILES).getJsonArray(f);
 			if (a != null) {
 				for (Object o : a) {
@@ -208,13 +204,13 @@ public class Report {
 	public void updateErrors(Handler<Message<JsonObject>> handler) {
 		boolean cleaned = updateCleanKeys();
 		JsonObject modif = new JsonObject()
-				.putObject("errors", result.getObject("errors"))
-				.putObject("softErrors", result.getObject("softErrors"));
+				.put("errors", result.getJsonObject("errors"))
+				.put("softErrors", result.getJsonObject("softErrors"));
 		if (cleaned) {
-			modif.putBoolean(KEYS_CLEANED, true);
+			modif.put(KEYS_CLEANED, true);
 		}
 		MongoDb.getInstance().update("imports", new JsonObject().put("_id", result.getString("_id")),
-				new JsonObject().putObject("$set", modif), handler);
+				new JsonObject().put("$set", modif), handler);
 	}
 
 	protected void cleanKeys() {}
@@ -329,16 +325,16 @@ public class Report {
 	}
 
 	public void addMapping(String profile, JsonObject mappping) {
-		JsonObject mappings = result.getObject(MAPPINGS);
+		JsonObject mappings = result.getJsonObject(MAPPINGS);
 		if (mappings == null) {
 			mappings = new JsonObject();
-			result.putObject(MAPPINGS, mappings);
+			result.put(MAPPINGS, mappings);
 		}
-		mappings.putObject(profile, mappping);
+		mappings.put(profile, mappping);
 	}
 
 	public JsonObject getMappings() {
-		return result.getObject(MAPPINGS);
+		return result.getJsonObject(MAPPINGS);
   }
 
 	protected boolean updateCleanKeys() { return false; }
@@ -346,19 +342,19 @@ public class Report {
 	protected int cleanAttributeKeys(JsonObject attribute) {
 		int count = 0;
 		if (attribute != null) {
-			for (String attr : attribute.copy().getFieldNames()) {
+			for (String attr : attribute.copy().fieldNames()) {
 				Object j = attribute.getValue(attr);
 				if (j instanceof JsonObject) {
-					for (String attr2 : ((JsonObject) j).copy().getFieldNames()) {
+					for (String attr2 : ((JsonObject) j).copy().fieldNames()) {
 						if (attr2.contains(".")) {
 							count++;
 							((JsonObject) j).put(
-									attr2.replaceAll("\\.", "_|_"), (String) ((JsonObject) j).removeField(attr2));
+									attr2.replaceAll("\\.", "_|_"), (String) ((JsonObject) j).remove(attr2));
 						}
 					}
 				} else if (j instanceof JsonArray && attr.contains(".")) {
-					attribute.putArray(attr.replaceAll("\\.", "_|_"), (JsonArray) j);
-					attribute.removeField(attr);
+					attribute.put(attr.replaceAll("\\.", "_|_"), (JsonArray) j);
+					attribute.remove(attr);
 					count++;
 				}
 			}
@@ -368,18 +364,18 @@ public class Report {
 
 	protected void uncleanAttributeKeys(JsonObject attribute) {
 		if (attribute != null) {
-			for (String attr : attribute.copy().getFieldNames()) {
+			for (String attr : attribute.copy().fieldNames()) {
 				Object j = attribute.getValue(attr);
 				if (j instanceof JsonObject) {
-					for (String attr2 : ((JsonObject) j).copy().getFieldNames()) {
+					for (String attr2 : ((JsonObject) j).copy().fieldNames()) {
 						if (attr2.contains("_|_")) {
 							((JsonObject) j).put(
-									attr2.replaceAll("_\\|_", "."), (String) ((JsonObject) j).removeField(attr2));
+									attr2.replaceAll("_\\|_", "."), (String) ((JsonObject) j).remove(attr2));
 						}
 					}
 				} else if (j instanceof JsonArray && attr.contains("_|_")) {
-					attribute.putArray(attr.replaceAll("_\\|_", "."), (JsonArray) j);
-					attribute.removeField(attr);
+					attribute.put(attr.replaceAll("_\\|_", "."), (JsonArray) j);
+					attribute.remove(attr);
 				}
 			}
 		}

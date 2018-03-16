@@ -29,6 +29,7 @@ import fr.wseduc.webutils.DefaultAsyncResult;
 import fr.wseduc.webutils.Either;
 import fr.wseduc.webutils.I18n;
 import fr.wseduc.webutils.http.BaseController;
+import io.vertx.core.json.DecodeException;
 import org.entcore.common.http.filter.AdminFilter;
 import org.entcore.common.http.filter.ResourceFilter;
 import org.entcore.common.user.DefaultFunctions;
@@ -122,7 +123,7 @@ public class ImportController extends BaseController {
 	public void validateWithId(final HttpServerRequest request) {
 		String importId = request.params().get("id");
 		importService.validate(importId, reportResponseHandler(vertx,
-				container.config().getString("wizard-path", "/tmp") + File.separator + importId, request));
+				config.getString("wizard-path", "/tmp") + File.separator + importId, request));
 	}
 
 	private void uploadImport(final HttpServerRequest request, final Handler<AsyncResult<ImportInfos>> handler) {
@@ -306,7 +307,7 @@ public class ImportController extends BaseController {
 	public void launchImport(final HttpServerRequest request) {
 		String importId = request.params().get("id");
 		importService.doImport(importId, reportResponseHandler(vertx,
-				container.config().getString("wizard-path", "/tmp") + File.separator + importId, request));
+				config.getString("wizard-path", "/tmp") + File.separator + importId, request));
 	}
 
 	@Post("/wizard/update/:id/:profile")

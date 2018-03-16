@@ -27,6 +27,7 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.file.FileSystem;
+import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
@@ -146,7 +147,7 @@ public class ImportInfos {
 	}
 
 	public void setMappings(JsonObject mappings) {
-		this.mappings = (mappings != null) ? mappings.toMap() : null;
+		this.mappings = (mappings != null) ? mappings.getMap() : null;
 	}
 
 	public Map<String, Object> getClassesMapping() {
@@ -154,7 +155,7 @@ public class ImportInfos {
 	}
 
 	public void setClassesMapping(JsonObject classesMapping) {
-		this.classesMapping = (classesMapping != null) ? classesMapping.toMap() : null;
+		this.classesMapping = (classesMapping != null) ? classesMapping.getMap() : null;
 	}
 
 	public void validate(final boolean isAdmc, final Vertx vertx, final Handler<AsyncResult<String>> handler) {

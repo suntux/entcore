@@ -23,11 +23,11 @@ import fr.wseduc.mongodb.MongoDb;
 import fr.wseduc.webutils.DefaultAsyncResult;
 import org.entcore.feeder.csv.CsvValidator;
 import org.entcore.feeder.exceptions.ValidationException;
-import org.vertx.java.core.AsyncResult;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.Vertx;
-import org.vertx.java.core.eventbus.Message;
-import org.vertx.java.core.json.JsonObject;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
+import io.vertx.core.eventbus.Message;
+import io.vertx.core.json.JsonObject;
 
 public class ValidatorFactory {
 
@@ -38,10 +38,10 @@ public class ValidatorFactory {
 	}
 
 	public void validator(String importId, final Handler<AsyncResult<ImportValidator>> handler) {
-		MongoDb.getInstance().findOne("imports", new JsonObject().putString("_id", importId), new Handler<Message<JsonObject>>() {
+		MongoDb.getInstance().findOne("imports", new JsonObject().put("_id", importId), new Handler<Message<JsonObject>>() {
 			@Override
 			public void handle(Message<JsonObject> event) {
-				final JsonObject result = event.body().getObject("result");
+				final JsonObject result = event.body().getJsonObject("result");
 				if ("ok".equals(event.body().getString("status")) && result != null) {
 					switch (result.getString("source")) {
 						case "CSV" :
