@@ -222,6 +222,7 @@ public class Structure {
 							.put("id", UUID.randomUUID().toString())
 							.put("displayNameSearchField", Validator.sanitize(struct.getString("name")))
 							.put("name", struct.getString("name") + "-HeadTeacher")
+							.put("filter", "HeadTeacher")
 					);
 			getTransaction().add(query, params);
 		}
@@ -237,7 +238,8 @@ public class Structure {
 					.put("id", UUID.randomUUID().toString())
 					.put("displayNameSearchField", Validator.sanitize(name))
 					.put("structureName", struct.getString("name"))
-					.put("name", name + "-HeadTeacher");
+					.put("name", name + "-HeadTeacher")
+					.put("filter", "HeadTeacher");
 			getTransaction().add(query, params);
 		}
 	}
