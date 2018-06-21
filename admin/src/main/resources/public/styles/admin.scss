@@ -2050,7 +2050,7 @@ table {
 }
 
 .message {
-    border: 1px solid black; 
+    border: 2px solid black; 
     box-shadow: 1px 1px 2px 1px #CCC;
     margin-bottom : 10px;
 
@@ -2071,12 +2071,12 @@ table {
     }
 
     &.is-success { border-color:  green; color: green;}
-    &.is-info { border-color:  blue; color: blue;}
+    &.is-info { border-color:  $main-dark; color: $main-dark;}
     &.is-danger { border-color: red; color: red;}
     &.is-warning { border-color: orange; color: orange;}
 
     &.is-success .message-header  { background: green;}
-    &.is-info .message-header { background: blue;}
+    &.is-info .message-header { background: $main-dark;}
     &.is-danger .message-header { background: red;}
     &.is-warning .message-header { background: orange;}
 }
@@ -2128,7 +2128,7 @@ message-sticker {
     i.fa {
         transition: color 0.25s;
         &.is-succcess { color: green; }
-        &.is-info { color: blue; }
+        &.is-info { color: $main-dark; }
         &.is-danger { color: red; }
         &.is-warning { color: orange; }
         &:hover { color: $accent;}
