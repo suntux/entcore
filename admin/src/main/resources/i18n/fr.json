@@ -59,6 +59,7 @@
     "login": "Login",
     "id": "Identifiant",
     "externalId": "Identifiant externe",
+    "externalId.short": "ID ext",
     "source": "Source",
     "MANUAL": "Manuel",
     "CLASS_PARAM" : "Paramétrage de la classe",
