@@ -1,6 +1,5 @@
 import { Component, Input,ChangeDetectorRef, ViewChild, OnInit, EventEmitter } from '@angular/core'
 import { ComponentDescriptor, DynamicComponentDirective } from '../../directives'
-import { BundlesService } from 'sijil'
 import { MessageBoxComponent, MessageType, icons } from './message-box.component'
 
 @Component({
