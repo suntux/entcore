@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.zip.Deflater;
 
@@ -105,10 +106,10 @@ public class ZipHelper {
 		this.storage = storage;
 	}
 
-	public Future<ZipContext> build(JsonObject root, JsonArray rows) {
+	public Future<ZipContext> build(Optional<JsonObject> root, JsonArray rows) {
 		Future<Void> future = Future.future();
 		ZipContext context = new ZipContext();
-		context.baseName = root.getString("name", "undefined");
+		context.baseName = root.isPresent() ? root.get().getString("name", "archive") : "archive";
 		context.basePath = Paths.get(System.getProperty("java.io.tmpdir"), context.baseName).normalize().toString();
 		context.zipName = context.baseName + ".zip";
 		context.zipFullPath = Paths.get(context.basePath, context.zipName).normalize().toString();
@@ -136,7 +137,13 @@ public class ZipHelper {
 	}
 
 	public Future<Void> buildAndSend(JsonObject root, JsonArray rows, HttpServerRequest req) {
-		return this.build(root, rows).compose(res -> {
+		return this.build(Optional.ofNullable(root), rows).compose(res -> {
+			return this.send(req, res);
+		});
+	}
+
+	public Future<Void> buildAndSend(JsonArray rows, HttpServerRequest req) {
+		return this.build(Optional.empty(), rows).compose(res -> {
 			return this.send(req, res);
 		});
 	}

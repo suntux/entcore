@@ -1,5 +1,9 @@
 package org.entcore.common.folders;
 
+import java.util.Collection;
+import java.util.Optional;
+
+import org.entcore.common.folders.impl.ShareOperations;
 import org.entcore.common.user.UserInfos;
 
 import io.vertx.core.AsyncResult;
@@ -46,9 +50,10 @@ public interface FolderManager {
 	 * list children belonging to a folder (files or folders)
 	 * 
 	 * @param idFolder
+	 * @param user
 	 * @param handler  emit the list of files/folders belonging to the folder
 	 */
-	void list(String idFolder, final Handler<AsyncResult<JsonArray>> handler);
+	void list(String idFolder, UserInfos user, final Handler<AsyncResult<JsonArray>> handler);
 
 	/**
 	 * 
@@ -82,6 +87,14 @@ public interface FolderManager {
 
 	/**
 	 * 
+	 * @param ids     id's list of files and folders
+	 * @param user    the user to check wich files he is able to see
+	 * @param request
+	 */
+	void downloadFiles(Collection<String> ids, UserInfos user, HttpServerRequest request);
+
+	/**
+	 * 
 	 * @param id      of the file or the folder
 	 * @param user    sharing the file or the folder
 	 * @param handler emit success if inheritedShared has been computed successfully
@@ -92,9 +105,10 @@ public interface FolderManager {
 	 * 
 	 * @param id      of the file or the folder
 	 * @param newName the new name of the file or folder
+	 * @param user    user renaming file
 	 * @param handler emit an error if rename failed
 	 */
-	void rename(String id, String newName, final Handler<AsyncResult<Void>> handler);
+	void rename(String id, String newName, UserInfos user, final Handler<AsyncResult<Void>> handler);
 
 	/**
 	 * 
@@ -110,14 +124,15 @@ public interface FolderManager {
 	/**
 	 * 
 	 * @param sourceId            of the file or the folder
-	 * @param destinationFolderId
+	 * @param destinationFolderId the id of the destination folder or empty if the
+	 *                            destination is root
 	 * @param user                the user doing the copy
-	 * @param handler             emit the folder info created or an error if the
+	 * @param handler             emit the list of copied files/folders or an error if the
 	 *                            destination or the source does not exists or an
 	 *                            error occurs
 	 */
-	void copy(String sourceId, String destinationFolderId, UserInfos user,
-			final Handler<AsyncResult<JsonObject>> handler);
+	void copy(String sourceId, Optional<String> destinationFolderId, UserInfos user,
+			final Handler<AsyncResult<JsonArray>> handler);
 
 	/**
 	 * trash only make the file or the folder not visible but it is still saved in
@@ -149,4 +164,12 @@ public interface FolderManager {
 	 * @param handler emit a list of the files/folders ID deleted
 	 */
 	void delete(String id, UserInfos user, final Handler<AsyncResult<JsonArray>> handler);
+
+	/**
+	 * 
+	 * @param id              of the file or the folder to share
+	 * @param shareOperations defining what kind of share operation to do
+	 * @param h               handler that emit the shared result
+	 */
+	public void share(String id, ShareOperations shareOperations, Handler<AsyncResult<JsonObject>> h);
 }
