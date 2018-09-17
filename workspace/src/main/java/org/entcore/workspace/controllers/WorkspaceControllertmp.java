@@ -47,6 +47,8 @@ import java.util.regex.Pattern;
 import static fr.wseduc.webutils.Utils.getOrElse;
 import static org.entcore.common.http.response.DefaultResponseHandler.arrayResponseHandler;
 import static org.entcore.common.http.response.DefaultResponseHandler.defaultResponseHandler;
+import static org.entcore.common.http.response.DefaultResponseHandler.defaultAsyncResultHandler;
+import static org.entcore.common.http.response.DefaultResponseHandler.arrayAsyncResultHandler;
 import static org.entcore.common.user.UserUtils.getUserInfos;
 import static org.entcore.workspace.dao.DocumentDao.DOCUMENTS_COLLECTION;
 
@@ -333,23 +335,11 @@ public class WorkspaceControllertmp extends BaseController {
                     @Override
                     public void handle(final UserInfos userInfos) {
 
-                        Handler<AsyncResult<JsonObject>> handler = new Handler<AsyncResult<JsonObject>>() {
-                            @Override
-                            public void handle(AsyncResult<JsonObject> event) {
-                                if(event.succeeded()){
-                                    renderJson(request, event.result(), 201);
-                                }else{
-                                    unauthorized(request, event.cause().getMessage());
-                                }
-                            }
-                        };
-
-
                         if (userInfos != null) {
                             if(parentFolderId == null || parentFolderId.trim().isEmpty())
-                                folderManager.createFolder(new JsonObject().put("name", name), userInfos, handler);
+                                folderManager.createFolder(new JsonObject().put("name", name), userInfos, defaultAsyncResultHandler(request, 201));
                             else
-                                folderManager.createFolder(parentFolderId, userInfos, new JsonObject().put("name", name), handler);
+                                folderManager.createFolder(parentFolderId, userInfos, new JsonObject().put("name", name), defaultAsyncResultHandler(request, 201));
                         } else {
                             unauthorized(request);
                         }
@@ -367,8 +357,8 @@ public class WorkspaceControllertmp extends BaseController {
             @Override
             public void handle(Void v) {
                 final String id = request.params().get("id");
-                final String path = request.formAttributes().get("path");
-                final String name = replaceUnderscore(request.formAttributes().get("name"));
+                final String parentFolderId = request.formAttributes().get("parentFolderId");
+                final String name = request.formAttributes().get("name");
                 if (id == null || id.trim().isEmpty()) {
                     badRequest(request);
                     return;
@@ -377,22 +367,22 @@ public class WorkspaceControllertmp extends BaseController {
                     @Override
                     public void handle(final UserInfos userInfos) {
                         if (userInfos != null) {
-                            emptySize(userInfos, new Handler<Long>() {
+                            wokspaceService.emptySize(userInfos, new Handler<Long>() {
                                 @Override
                                 public void handle(Long emptySize) {
-                                    folderService.copy(id, name, path, userInfos, emptySize,
-                                            new Handler<Either<String, JsonArray>>() {
-                                                @Override
-                                                public void handle(Either<String, JsonArray> r) {
-                                                    if (r.isRight()) {
-                                                        incrementStorage(r.right().getValue());
-                                                        renderJson(request, new JsonObject()
-                                                                .put("number", r.right().getValue().size()));
-                                                    } else {
-                                                        badRequest(request, r.left().getValue());
-                                                    }
-                                                }
-                                            });
+                                    folderManager.copy(id, Optional.ofNullable(parentFolderId), emptySize, userInfos, new Handler<AsyncResult<JsonArray>>() {
+                                        @Override
+                                        public void handle(AsyncResult<JsonArray> event) {
+                                            if(event.succeeded()){
+                                                wokspaceService.incrementStorage(event.result());
+                                                renderJson(request, new JsonObject()
+                                                        .put("number", event.result().size()));
+                                            }else{
+                                                badRequest(request, event.cause().getMessage());
+                                            }
+
+                                        }
+                                    });
                                 }
                             });
                         } else {
@@ -412,13 +402,8 @@ public class WorkspaceControllertmp extends BaseController {
             @Override
             public void handle(Void v) {
                 final String id = request.params().get("id");
-                String p;
-                try {
-                    p = getOrElse(request.formAttributes().get("path"), "");
-                } catch (IllegalStateException e) {
-                    p = "";
-                }
-                final String path = p;
+                final String parentFolderId = request.formAttributes().get("parentFolderId");
+
                 if (id == null || id.trim().isEmpty()) {
                     badRequest(request);
                     return;
@@ -427,7 +412,7 @@ public class WorkspaceControllertmp extends BaseController {
                     @Override
                     public void handle(final UserInfos userInfos) {
                         if (userInfos != null) {
-                            folderService.move(id, path, userInfos, defaultResponseHandler(request));
+                            folderManager.move(id, Optional.ofNullable(parentFolderId), userInfos, defaultAsyncResultHandler(request));
                         } else {
                             unauthorized(request);
                         }
@@ -449,7 +434,7 @@ public class WorkspaceControllertmp extends BaseController {
             @Override
             public void handle(final UserInfos userInfos) {
                 if (userInfos != null) {
-                    folderService.trash(id, userInfos, defaultResponseHandler(request));
+                    folderManager.trash(id, userInfos, arrayAsyncResultHandler(request));
                 } else {
                     unauthorized(request);
                 }
@@ -469,7 +454,7 @@ public class WorkspaceControllertmp extends BaseController {
             @Override
             public void handle(final UserInfos userInfos) {
                 if (userInfos != null) {
-                    folderService.restore(id, userInfos, defaultResponseHandler(request));
+                    folderManager.restore(id, userInfos, arrayAsyncResultHandler(request));
                 } else {
                     unauthorized(request);
                 }
@@ -489,6 +474,20 @@ public class WorkspaceControllertmp extends BaseController {
             @Override
             public void handle(final UserInfos userInfos) {
                 if (userInfos != null) {
+                    folderManager.delete(id, userInfos, new Handler<AsyncResult<JsonArray>>() {
+                        @Override
+                        public void handle(AsyncResult<JsonArray> event) {
+                            if(event.succeeded()){
+                                for(Object obj : r.right().getValue()){
+                                    JsonObject item = (JsonObject) obj;
+                                    if(item.containsKey("file"))
+                                        wokspaceService.deleteAllRevisions(item.getString("_id"), new fr.wseduc.webutils.collections.JsonArray().add(item.getString("file")));
+                                }
+                            }else{
+                                badRequest(request, event.cause().getMessage());
+                            }
+                        }
+                    });
                     folderService.delete(id, userInfos, new Handler<Either<String, JsonArray>>() {
                         @Override
                         public void handle(Either<String, JsonArray> r) {

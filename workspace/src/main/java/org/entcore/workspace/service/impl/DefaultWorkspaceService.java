@@ -1,11 +1,18 @@
 package org.entcore.workspace.service.impl;
 
+import com.mongodb.QueryBuilder;
+import fr.wseduc.mongodb.MongoDb;
+import fr.wseduc.mongodb.MongoQueryBuilder;
 import fr.wseduc.webutils.Either;
 import io.vertx.core.Handler;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 import org.entcore.common.bus.WorkspaceHelper;
+import org.entcore.common.mongodb.MongoDbResult;
 import org.entcore.common.storage.Storage;
 import org.entcore.common.user.UserInfos;
 import org.entcore.common.user.UserUtils;
@@ -14,7 +21,9 @@ import org.entcore.workspace.service.WorkspaceServiceI;
 import org.entcore.workspace.dao.DocumentDao;
 
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static fr.wseduc.webutils.Utils.getOrElse;
 import static fr.wseduc.webutils.Utils.handlerToAsyncHandler;
@@ -24,10 +33,16 @@ public class DefaultWorkspaceService implements WorkspaceServiceI {
     private final Storage storage;
     private QuotaService quotaService;
     public static final String WORKSPACE_NAME = "WORKSPACE";
+    public static final String DOCUMENT_REVISION_COLLECTION = "documentsRevisions";
+    private static final Logger log = LoggerFactory.getLogger(DefaultWorkspaceService.class);
+    private final MongoDb mongo;
+    private int threshold;
 
 
-    public DefaultWorkspaceService(Storage storage) {
+    public DefaultWorkspaceService(Storage storage, MongoDb mongo, int threshold) {
         this.storage = storage;
+        this.mongo = mongo;
+        this.threshold = threshold;
     }
 
     public void addDocument(final float quality, final String name, final String application, final List<String> thumbnail,
@@ -131,5 +146,142 @@ public class DefaultWorkspaceService implements WorkspaceServiceI {
                 }
             });
         }
+    }
+
+
+    public void incrementStorage(JsonObject added) {
+        updateStorage(new fr.wseduc.webutils.collections.JsonArray().add(added), null);
+    }
+
+    public void decrementStorage(JsonObject removed) {
+        updateStorage(null, new fr.wseduc.webutils.collections.JsonArray().add(removed));
+    }
+
+    public void decrementStorage(JsonObject removed, Handler<Either<String, JsonObject>> handler) {
+        updateStorage(null, new fr.wseduc.webutils.collections.JsonArray().add(removed), handler);
+    }
+
+    public void incrementStorage(JsonArray added) {
+        updateStorage(added, null);
+    }
+
+    public void decrementStorage(JsonArray removed) {
+        updateStorage(null, removed);
+    }
+
+    public void updateStorage(JsonObject added, JsonObject removed) {
+        updateStorage(new fr.wseduc.webutils.collections.JsonArray().add(added), new JsonArray().add(removed));
+    }
+
+    public void updateStorage(JsonArray addeds, JsonArray removeds) {
+        updateStorage(addeds, removeds, null);
+    }
+
+    public void updateStorage(JsonArray addeds, JsonArray removeds, final Handler<Either<String, JsonObject>> handler) {
+        Map<String, Long> sizes = new HashMap<>();
+        if (addeds != null) {
+            for (Object o : addeds) {
+                if (!(o instanceof JsonObject)) continue;
+                JsonObject added = (JsonObject) o;
+                Long size = added.getJsonObject("metadata", new JsonObject()).getLong("size", 0l);
+                String userId = (added.containsKey("to")) ? added.getString("to") : added.getString("owner");
+                if (userId == null) {
+                    log.info("UserId is null when update storage size");
+                    log.info(added.encode());
+                    continue;
+                }
+                Long old = sizes.get(userId);
+                if (old != null) {
+                    size += old;
+                }
+                sizes.put(userId, size);
+            }
+        }
+
+        if (removeds != null) {
+            for (Object o : removeds) {
+                if (!(o instanceof JsonObject)) continue;
+                JsonObject removed = (JsonObject) o;
+                Long size = removed.getJsonObject("metadata", new JsonObject()).getLong("size", 0l);
+                String userId = (removed.containsKey("to")) ? removed.getString("to") : removed.getString("owner");
+                if (userId == null) {
+                    log.info("UserId is null when update storage size");
+                    log.info(removed.encode());
+                    continue;
+                }
+                Long old = sizes.get(userId);
+                if (old != null) {
+                    old -= size;
+                } else {
+                    old = -1l * size;
+                }
+                sizes.put(userId, old);
+            }
+        }
+
+        for (final Map.Entry<String, Long> e : sizes.entrySet()) {
+            quotaService.incrementStorage(e.getKey(), e.getValue(), threshold, new Handler<Either<String, JsonObject>>() {
+                @Override
+                public void handle(Either<String, JsonObject> r) {
+                    if (r.isRight()) {
+                        JsonObject j = r.right().getValue();
+                        UserUtils.addSessionAttribute(eb, e.getKey(), "storage", j.getLong("storage"), null);
+                        if (j.getBoolean("notify", false)) {
+                            notifyEmptySpaceIsSmall(e.getKey());
+                        }
+                    } else {
+                        log.error(r.left().getValue());
+                    }
+                    if (handler != null) {
+                        handler.handle(r);
+                    }
+                }
+            });
+        }
+    }
+
+    public void deleteAllRevisions(final String documentId, final JsonArray alreadyDeleted){
+        final QueryBuilder builder = QueryBuilder.start("documentId").is(documentId);
+        JsonObject keys = new JsonObject();
+
+        mongo.find(DOCUMENT_REVISION_COLLECTION, MongoQueryBuilder.build(builder), new JsonObject(), keys, MongoDbResult.validResultsHandler(new Handler<Either<String,JsonArray>>() {
+            public void handle(Either<String, JsonArray> event) {
+                if (event.isRight()) {
+                    final JsonArray results = event.right().getValue();
+                    final JsonArray ids = new fr.wseduc.webutils.collections.JsonArray();
+                    for(Object obj : results){
+                        JsonObject json = (JsonObject) obj;
+                        String id = json.getString("file");
+                        if (id != null && !alreadyDeleted.contains(id)) {
+                            ids.add(id);
+                        }
+                    }
+                    storage.removeFiles(ids, new Handler<JsonObject>() {
+                        public void handle(JsonObject event) {
+                            if(event != null && "ok".equals(event.getString("status"))){
+                                //Delete revisions
+                                mongo.delete(DOCUMENT_REVISION_COLLECTION, MongoQueryBuilder.build(builder), MongoDbResult.validResultHandler(new Handler<Either<String,JsonObject>>() {
+                                    public void handle(Either<String, JsonObject> event) {
+                                        if (event.isLeft()) {
+                                            log.error("[Workspace] Error deleting revisions for document " + documentId + " - " + event.left().getValue());
+                                        } else {
+                                            for(Object obj : results){
+                                                JsonObject result = (JsonObject) obj;
+                                                if(!alreadyDeleted.contains(result.getString("file")))
+                                                    decrementStorage(result);
+                                            }
+                                        }
+                                    }
+                                }));
+                            } else {
+                                log.error("[Workspace] Error deleting revision storage files for document " + documentId + " "+ids+" - " + event.getString("message"));
+                            }
+                        }
+                    });
+                } else {
+                    log.error("[Workspace] Error finding revision for document " + documentId + " - " + event.left().getValue());
+                }
+            }
+        }));
     }
 }
