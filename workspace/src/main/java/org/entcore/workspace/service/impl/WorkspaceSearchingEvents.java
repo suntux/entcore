@@ -212,5 +212,4 @@ public class WorkspaceSearchingEvents implements SearchingEvents {
 
 		}
 	}
-
 }
