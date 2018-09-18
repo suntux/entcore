@@ -10,7 +10,7 @@ import org.entcore.common.folders.FolderManager;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
-public class InheritShareComputer {
+class InheritShareComputer {
 	private final JsonObject root;
 	private final JsonArray rows;
 	private Map<String, JsonObject> rowsById;

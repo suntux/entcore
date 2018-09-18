@@ -21,7 +21,7 @@ import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 
-public class StorageHelper {
+class StorageHelper {
 	static Set<String> getThumbnailsFilesIds(JsonObject jsonDocument) {
 		Set<String> thumbIds = Stream.of(jsonDocument.getJsonObject("thumbnails", null))
 				.filter(thumbs -> thumbs != null)//

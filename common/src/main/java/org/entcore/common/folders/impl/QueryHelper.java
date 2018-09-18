@@ -6,6 +6,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 import org.entcore.common.folders.FolderManager;
 import org.entcore.common.user.UserInfos;
@@ -22,7 +23,7 @@ import io.vertx.core.Future;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
-public class QueryHelper {
+class QueryHelper {
 	protected final MongoDb mongo = MongoDb.getInstance();
 	private final String collection;
 
@@ -45,6 +46,8 @@ public class QueryHelper {
 	public static class FileQueryBuilder {
 		QueryBuilder builder = new QueryBuilder();
 		private boolean excludeDeleted;
+
+		private boolean onlyDeleted;
 
 		FileQueryBuilder filterBySharedAndOwner(UserInfos user) {
 			List<DBObject> groups = new ArrayList<>();
@@ -89,13 +92,28 @@ public class QueryHelper {
 			return this;
 		}
 
+		public FileQueryBuilder withOnlyDeletedFile() {
+			onlyDeleted = true;
+			builder.and("deleted").is(true);
+			return this;
+		}
+
 		public FileQueryBuilder withFileType(final int type) {
 			builder.and("eType").is(type);
 			return this;
 		}
 
+		public FileQueryBuilder withNameMatch(final String pattern) {
+			builder.and("name").regex(Pattern.compile("^" + pattern + "(_|$)"));
+			return this;
+		}
+
 		public boolean isExcludeDeleted() {
 			return excludeDeleted;
+		}
+
+		public boolean isOnlyDeleted() {
+			return onlyDeleted;
 		}
 
 		public QueryBuilder build() {
@@ -121,9 +139,12 @@ public class QueryHelper {
 			// exclude deleted files => graphlookup reintroduce deleted children
 			agg = agg.withMatch(queryBuilder().withExcludeDeleted().build());
 		}
+		if (query.isOnlyDeleted()) {
+			agg = agg.withMatch(queryBuilder().withOnlyDeletedFile().build());
+		}
 		// finally project name and parent
 		agg.withProjection(new JsonObject().put("_id", 1).put("name", 1).put("eType", 1).put("file", 1)
-				.put("thumbnails", 1).put("eParent", 1).put("shared", 1).put("parents", "$tree._id"))//
+				.put("thumbnails", 1).put("eParent", 1).put("shared", 1).put("metadata", 1).put("parents", "$tree._id"))//
 				.getCommand();
 		JsonObject command = agg.getCommand();
 		mongo.aggregate(command, message -> {
@@ -211,6 +232,19 @@ public class QueryHelper {
 			JsonObject body = message.body();
 			if (isOk(body)) {
 				future.complete(file);
+			} else {
+				future.fail(toErrorStr(body));
+			}
+		});
+		return future;
+	}
+
+	Future<Void> update(String id, JsonObject set) {
+		Future<Void> future = Future.future();
+		mongo.update(collection, toJson(QueryBuilder.start("_id").is(id)), set, message -> {
+			JsonObject body = message.body();
+			if (isOk(body)) {
+				future.complete(null);
 			} else {
 				future.fail(toErrorStr(body));
 			}

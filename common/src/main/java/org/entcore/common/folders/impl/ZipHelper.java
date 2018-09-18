@@ -23,8 +23,8 @@ import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
-public class ZipHelper {
-	public static class ZipContext {
+class ZipHelper {
+	static class ZipContext {
 		String basePath;
 		String baseName;
 		String zipFullPath;

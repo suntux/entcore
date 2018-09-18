@@ -3,7 +3,6 @@ package org.entcore.common.folders;
 import java.util.Collection;
 import java.util.Optional;
 
-import org.entcore.common.folders.impl.ShareOperations;
 import org.entcore.common.user.UserInfos;
 
 import io.vertx.core.AsyncResult;
@@ -15,6 +14,34 @@ import io.vertx.core.json.JsonObject;
 public interface FolderManager {
 	static final int FOLDER_TYPE = 0;
 	static final int FILE_TYPE = 1;
+
+	/**
+	 * 
+	 * @param query   multi criteria query
+	 * @param user    user executing the query
+	 * @param handler emitting all files matching the query
+	 */
+	void findByQuery(ElementQuery query, UserInfos user, Handler<AsyncResult<JsonArray>> handler);
+
+	/**
+	 * 
+	 * @param parentId the folder containing the file
+	 * @param doc      the file object
+	 * @param user     the user saving the file
+	 * @param handler  the handler that emit the file saved
+	 */
+	void addFile(Optional<String> parentId, JsonObject doc, UserInfos user, Handler<AsyncResult<JsonObject>> handler);
+
+	/**
+	 * 
+	 * @param id       of the file to update
+	 * @param parentId folder containing the file
+	 * @param doc      the content of the file object
+	 * @param user     the user updating the file
+	 * @param handler  the handler that emit the file object save or an error if any
+	 */
+	void updateFile(String id, Optional<String> parentId, JsonObject doc, UserInfos user,
+			Handler<AsyncResult<JsonObject>> handler);
 
 	/**
 	 * Create a folder as root folder
@@ -127,11 +154,24 @@ public interface FolderManager {
 	 * @param destinationFolderId the id of the destination folder or empty if the
 	 *                            destination is root
 	 * @param user                the user doing the copy
-	 * @param handler             emit the list of copied files/folders or an error if the
-	 *                            destination or the source does not exists or an
-	 *                            error occurs
+	 * @param handler             emit the list of copied files/folders or an error
+	 *                            if the destination or the source does not exists
+	 *                            or an error occurs
 	 */
 	void copy(String sourceId, Optional<String> destinationFolderId, UserInfos user,
+			final Handler<AsyncResult<JsonArray>> handler);
+
+	/**
+	 * 
+	 * @param sourceIds           collection of id's file or the folder
+	 * @param destinationFolderId the id of the destination folder or empty if the
+	 *                            destination is root
+	 * @param user                the user doing the copy
+	 * @param handler             emit the list of copied files/folders or an error
+	 *                            if the destination or the source does not exists
+	 *                            or an error occurs
+	 */
+	void copyAll(Collection<String> sourceIds, Optional<String> destinationFolderId, UserInfos user,
 			final Handler<AsyncResult<JsonArray>> handler);
 
 	/**
@@ -171,5 +211,5 @@ public interface FolderManager {
 	 * @param shareOperations defining what kind of share operation to do
 	 * @param h               handler that emit the shared result
 	 */
-	public void share(String id, ShareOperations shareOperations, Handler<AsyncResult<JsonObject>> h);
+	public void share(String id, ElementShareOperations shareOperations, Handler<AsyncResult<JsonObject>> h);
 }

@@ -12,13 +12,16 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.entcore.common.folders.ElementQuery;
+import org.entcore.common.folders.ElementShareOperations;
 import org.entcore.common.folders.FolderManager;
+import org.entcore.common.folders.impl.QueryHelper.FileQueryBuilder;
 import org.entcore.common.share.ShareService;
 import org.entcore.common.storage.Storage;
 import org.entcore.common.user.UserInfos;
-import org.entcore.common.utils.DateUtils;
 import org.entcore.common.utils.StringUtils;
 
+import fr.wseduc.mongodb.MongoDb;
 import fr.wseduc.mongodb.MongoUpdateBuilder;
 import fr.wseduc.swift.storage.DefaultAsyncResult;
 import fr.wseduc.webutils.Either;
@@ -53,11 +56,71 @@ public class FolderManagerMongoImpl implements FolderManager {
 		this.queryHelper = new QueryHelper(collection);
 	}
 
+	@Override
+	public void findByQuery(ElementQuery query, UserInfos user, Handler<AsyncResult<JsonArray>> handler) {
+		FileQueryBuilder builder = queryHelper.queryBuilder();
+		builder.filterByInheritShareAndOwner(user);
+		if (query.getTrash() != null) {
+			if (query.getTrash()) {
+				builder.withOnlyDeletedFile();
+			} else {
+				builder.withExcludeDeleted();
+			}
+		}
+		if (query.getSearchByName() != null) {
+			builder.withNameMatch(query.getSearchByName());
+		}
+		if (query.getIdFolder() != null) {
+			builder.withId(query.getIdFolder());
+		}
+		if (query.getHierarchical() != null && query.getHierarchical()) {
+			queryHelper.listRecursive(builder).setHandler(handler);
+		} else {
+			queryHelper.findAll(builder).setHandler(handler);
+		}
+	}
+
+	@Override
+	public void addFile(Optional<String> parentId, JsonObject doc, UserInfos user,
+			Handler<AsyncResult<JsonObject>> handler) {
+		Future<JsonObject> future = parentId.isPresent() ? this.mergeShared(parentId.get(), doc)
+				: Future.succeededFuture();
+		future.compose(parent -> {
+			String now = MongoDb.formatDate(new Date());
+			if (parentId.isPresent()) {
+				doc.put("eParent", parentId);
+			}
+			doc.put("eType", FILE_TYPE);
+			doc.put("created", now);
+			doc.put("modified", now);
+			doc.put("owner", user.getUserId());
+			doc.put("ownerName", user.getUsername());
+			//
+			return queryHelper.insert(doc);
+		}).setHandler(handler);
+	}
+
+	@Override
+	public void updateFile(String id, Optional<String> parentId, JsonObject doc, UserInfos user,
+			Handler<AsyncResult<JsonObject>> handler) {
+		Future<JsonObject> future = parentId.isPresent() ? this.mergeShared(parentId.get(), doc)
+				: Future.succeededFuture();
+		future.compose(parent -> {
+			String now = MongoDb.formatDate(new Date());
+			if (parentId.isPresent()) {
+				doc.put("eParent", parentId);
+			}
+			doc.put("modified", now);
+			//
+			return queryHelper.update(id, doc).map(doc);
+		}).setHandler(handler);
+	}
+
 	private Future<JsonObject> mergeShared(String parentFolderId, JsonObject current) {
 		return queryHelper.findById(parentFolderId).compose(parentFolder -> {
 			Future<JsonObject> future = Future.future();
 			if (parentFolder == null) {
-				future.fail("Could not found parent folder with id :" + parentFolderId);
+				future.fail("not.found");
 			} else {
 				try {
 					InheritShareComputer.mergeShared(parentFolder, current);
@@ -70,8 +133,8 @@ public class FolderManagerMongoImpl implements FolderManager {
 		});
 	}
 
-	public void share(String id, ShareOperations shareOperations, Handler<AsyncResult<JsonObject>> h) {
-		UserInfos user = shareOperations.user;
+	public void share(String id, ElementShareOperations shareOperations, Handler<AsyncResult<JsonObject>> h) {
+		UserInfos user = shareOperations.getUser();
 		this.info(id, user, ev -> {
 			if (ev.succeeded()) {
 				// compute shared after sharing
@@ -93,20 +156,22 @@ public class FolderManagerMongoImpl implements FolderManager {
 					}
 				};
 				//
-				switch (shareOperations.kind) {
+				switch (shareOperations.getKind()) {
 				case GROUP_SHARE:
-					this.shareService.groupShare(user.getUserId(), shareOperations.groupId, id, shareOperations.actions,
-							handler);
+					this.shareService.groupShare(user.getUserId(), shareOperations.getGroupId(), id,
+							shareOperations.getActions(), handler);
 					break;
 				case GROUP_SHARE_REMOVE:
-					this.shareService.removeGroupShare(shareOperations.groupId, id, shareOperations.actions, handler);
-					break;
-				case USER_SHARE:
-					this.shareService.userShare(user.getUserId(), shareOperations.userId, id, shareOperations.actions,
+					this.shareService.removeGroupShare(shareOperations.getGroupId(), id, shareOperations.getActions(),
 							handler);
 					break;
+				case USER_SHARE:
+					this.shareService.userShare(user.getUserId(), shareOperations.getUserId(), id,
+							shareOperations.getActions(), handler);
+					break;
 				case USER_SHARE_REMOVE:
-					this.shareService.removeUserShare(shareOperations.userId, id, shareOperations.actions, handler);
+					this.shareService.removeUserShare(shareOperations.getUserId(), id, shareOperations.getActions(),
+							handler);
 					break;
 				}
 			} else {
@@ -129,8 +194,9 @@ public class FolderManagerMongoImpl implements FolderManager {
 	@Override
 	public void createFolder(JsonObject folder, UserInfos user, Handler<AsyncResult<JsonObject>> handler) {
 		folder.put("eType", FOLDER_TYPE);
-		folder.put("created", DateUtils.getDateJsonObject(new Date()));
-		folder.put("modified", DateUtils.getDateJsonObject(new Date()));
+		String now = MongoDb.formatDate(new Date());
+		folder.put("created", now);
+		folder.put("modified", now);
 		folder.put("owner", user.getUserId());
 		folder.put("ownerName", user.getUsername());
 		queryHelper.insert(folder).setHandler(handler);
@@ -215,7 +281,7 @@ public class FolderManagerMongoImpl implements FolderManager {
 						// download multiple files
 						@SuppressWarnings("rawtypes")
 						List<Future> futures = bodyRoots.stream().map(m -> (JsonObject) m).map(bodyRoot -> {
-							switch (bodyRoot.getInteger("eType", -1)) {
+							switch (DocumentHelper.getType(bodyRoot)) {
 							case FOLDER_TYPE:
 								String idFolder = bodyRoot.getString("_id");
 								Future<JsonArray> future = queryHelper.listRecursive(queryHelper.queryBuilder()
@@ -264,7 +330,7 @@ public class FolderManagerMongoImpl implements FolderManager {
 		this.info(id, user, msg -> {
 			if (msg.succeeded()) {
 				JsonObject bodyRoot = msg.result();
-				switch (bodyRoot.getInteger("eType", -1)) {
+				switch (DocumentHelper.getType(bodyRoot)) {
 				case FOLDER_TYPE:
 					String idFolder = bodyRoot.getString("_id");
 					Future<JsonArray> future = queryHelper.listRecursive(queryHelper.queryBuilder()
@@ -314,7 +380,7 @@ public class FolderManagerMongoImpl implements FolderManager {
 			if (msg.succeeded()) {
 				JsonObject bodyInfo = msg.result();
 				String parent = bodyInfo.getString("eParent");
-				switch (bodyInfo.getInteger("eType", -1)) {
+				switch (DocumentHelper.getType(bodyInfo)) {
 				case FOLDER_TYPE:
 					this.updateInheritedShared(parent, bodyInfo).compose(res -> {
 						String idFolder = bodyInfo.getString("_id");
@@ -371,7 +437,7 @@ public class FolderManagerMongoImpl implements FolderManager {
 						queryHelper.update(sourceId, set).map(v -> previous).setHandler(handler);
 					});
 				} else {
-					handler.handle(toError("Could not found source with id :" + sourceId));
+					handler.handle(toError("not.found"));
 				}
 			} else {
 				handler.handle(toError(msg.cause()));
@@ -426,6 +492,24 @@ public class FolderManagerMongoImpl implements FolderManager {
 	}
 
 	@Override
+	public void copyAll(Collection<String> sourceIds, Optional<String> destinationFolderId, UserInfos user,
+			Handler<AsyncResult<JsonArray>> handler) {
+		@SuppressWarnings("rawtypes")
+		List<Future> futures = sourceIds.stream().map(id -> {
+			Future<JsonArray> future = Future.future();
+			copy(id, destinationFolderId, user, future.completer());
+			return future;
+		}).collect(Collectors.toList());
+		CompositeFuture.all(futures).compose(results -> {
+			JsonArray array = new JsonArray();
+			results.list().stream().forEach(r -> {
+				array.addAll((JsonArray) r);
+			});
+			return Future.succeededFuture(array);
+		}).setHandler(handler);
+	}
+
+	@Override
 	public void copy(String sourceId, Optional<String> destFolderId, UserInfos user,
 			Handler<AsyncResult<JsonArray>> handler) {
 		this.info(sourceId, user, message -> {
@@ -436,7 +520,7 @@ public class FolderManagerMongoImpl implements FolderManager {
 
 				JsonObject original = message.result();
 				String id = original.getString("_id");
-				switch (original.getInteger("eType", -1)) {
+				switch (DocumentHelper.getType(original)) {
 				case FOLDER_TYPE:
 					copyFolderRecursively(id, safeDestFolderId).setHandler(handler);
 					return;
@@ -453,15 +537,15 @@ public class FolderManagerMongoImpl implements FolderManager {
 		});
 	}
 
-	private Future<JsonArray> deleteFiles(List<JsonObject> files) {
+	private Future<List<JsonObject>> deleteFiles(List<JsonObject> files) {
 		// Set to avoid duplicate
 		Set<String> ids = files.stream().map(o -> o.getString("_id")).collect(Collectors.toSet());
 		return queryHelper.deleteFiles((ids)).compose(res -> {
-			Future<JsonArray> future = Future.future();
+			Future<List<JsonObject>> future = Future.future();
 			List<String> listOfFilesIds = StorageHelper.getListOfFileIds(files);
 			this.storage.removeFiles(new JsonArray(listOfFilesIds), resDelete -> {
 				if (isOk(resDelete)) {
-					future.complete(new JsonArray(new ArrayList<>(ids)));
+					future.complete(files);
 				} else {
 					future.fail(toErrorStr(resDelete));
 				}
@@ -470,15 +554,13 @@ public class FolderManagerMongoImpl implements FolderManager {
 		});
 	}
 
-	private Future<JsonArray> deleteFolders(List<JsonObject> files) {
+	private Future<List<JsonObject>> deleteFolders(List<JsonObject> files) {
 		// Set to avoid duplicate
 		Set<String> ids = files.stream().map(o -> o.getString("_id")).collect(Collectors.toSet());
-		return queryHelper.deleteFiles((ids)).map(res -> {
-			return new JsonArray(new ArrayList<>(ids));
-		});
+		return queryHelper.deleteFiles((ids)).map(files);
 	}
 
-	private Future<JsonArray> deleteFolderRecursively(JsonObject folder, UserInfos user) {
+	private Future<List<JsonObject>> deleteFolderRecursively(JsonObject folder, UserInfos user) {
 		String idFolder = folder.getString("_id");
 		return queryHelper.listRecursive(queryHelper.queryBuilder().filterBySharedAndOwner(user).withId(idFolder))
 				.compose(rows -> {
@@ -493,9 +575,9 @@ public class FolderManagerMongoImpl implements FolderManager {
 					return CompositeFuture.all(deleteFolders(folders), deleteFiles(files));
 				}).map(result -> {
 					if (result.result().size() == 0) {
-						return new JsonArray();
+						return new ArrayList<>();
 					}
-					JsonArray array = result.result().resultAt(0);
+					List<JsonObject> array = result.result().resultAt(0);
 					array.addAll(result.result().resultAt(1));
 					return array;
 				});
@@ -506,12 +588,16 @@ public class FolderManagerMongoImpl implements FolderManager {
 		this.info(id, user, msg -> {
 			if (msg.succeeded()) {
 				JsonObject body = msg.result();
-				switch (body.getInteger("eType", -1)) {
+				switch (DocumentHelper.getType(body)) {
 				case FOLDER_TYPE:
-					deleteFolderRecursively(body, user).setHandler(handler);
+					deleteFolderRecursively(body, user)
+							.map(v -> v.stream().collect(JsonArray::new, JsonArray::add, JsonArray::addAll))
+							.setHandler(handler);
 					return;
 				case FILE_TYPE:
-					deleteFiles(Arrays.asList(body)).setHandler(handler);
+					deleteFiles(Arrays.asList(body))
+							.map(v -> v.stream().collect(JsonArray::new, JsonArray::add, JsonArray::addAll))
+							.setHandler(handler);
 					return;
 				default:
 					handler.handle(toError("Could not determine the type (file or folder) for id:" + id));
@@ -546,7 +632,7 @@ public class FolderManagerMongoImpl implements FolderManager {
 		this.info(id, user, msg -> {
 			if (msg.succeeded()) {
 				JsonObject body = msg.result();
-				switch (body.getInteger("eType", -1)) {
+				switch (DocumentHelper.getType(body)) {
 				case FOLDER_TYPE:
 					setDeleteFlagRecursively(body, user, deleted).setHandler(handler);
 					return;
