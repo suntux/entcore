@@ -49,7 +49,7 @@ class QueryHelper {
 
 		private boolean onlyDeleted;
 
-		FileQueryBuilder filterBySharedAndOwner(UserInfos user) {
+		public FileQueryBuilder filterBySharedAndOwner(UserInfos user) {
 			List<DBObject> groups = new ArrayList<>();
 			groups.add(QueryBuilder.start("userId").is(user.getUserId()).get());
 			for (String gpId : user.getGroupsIds()) {
@@ -60,11 +60,22 @@ class QueryHelper {
 			return this;
 		}
 
-		FileQueryBuilder filterByInheritShareAndOwner(UserInfos user) {
+		public FileQueryBuilder filterByInheritShareAndOwner(UserInfos user) {
 			List<DBObject> groups = new ArrayList<>();
 			groups.add(builder.and("userId").is(user.getUserId()).get());
 			for (String gpId : user.getGroupsIds()) {
 				groups.add(QueryBuilder.start("groupId").is(gpId).get());
+			}
+			builder.or(QueryBuilder.start("owner").is(user.getUserId()).get(), QueryBuilder.start("inheritedShares")
+					.elemMatch(new QueryBuilder().or(groups.toArray(new DBObject[groups.size()])).get()).get());
+			return this;
+		}
+
+		public FileQueryBuilder filterByInheritShareAndOwnerWithAction(UserInfos user, String action) {
+			List<DBObject> groups = new ArrayList<>();
+			groups.add(builder.and("userId").is(user.getUserId()).put(action).is(true).get());
+			for (String gpId : user.getGroupsIds()) {
+				groups.add(QueryBuilder.start("groupId").is(gpId).put(action).is(true).get());
 			}
 			builder.or(QueryBuilder.start("owner").is(user.getUserId()).get(), QueryBuilder.start("inheritedShares")
 					.elemMatch(new QueryBuilder().or(groups.toArray(new DBObject[groups.size()])).get()).get());
@@ -78,6 +89,11 @@ class QueryHelper {
 
 		public FileQueryBuilder withId(String id) {
 			builder.and("_id").is(id);
+			return this;
+		}
+
+		public FileQueryBuilder withKeyValue(String key, Object value) {
+			builder.and(key).is(value);
 			return this;
 		}
 

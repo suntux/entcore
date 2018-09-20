@@ -3,10 +3,10 @@ package org.entcore.common.folders.impl;
 import java.util.Collection;
 import java.util.Optional;
 
-import org.entcore.common.folders.FolderManager;
-import org.entcore.common.folders.QuotaService;
 import org.entcore.common.folders.ElementQuery;
 import org.entcore.common.folders.ElementShareOperations;
+import org.entcore.common.folders.FolderManager;
+import org.entcore.common.folders.QuotaService;
 import org.entcore.common.user.UserInfos;
 import org.entcore.common.user.UserUtils;
 
@@ -132,6 +132,12 @@ public class FolderManagerWithQuota implements FolderManager {
 	}
 
 	@Override
+	public void moveAll(Collection<String> sourceId, String destinationFolderId, UserInfos user,
+			Handler<AsyncResult<JsonArray>> handler) {
+		this.folderManager.moveAll(sourceId, destinationFolderId, user, handler);
+	}
+
+	@Override
 	public void move(String sourceId, String destinationFolderId, UserInfos user,
 			Handler<AsyncResult<JsonObject>> handler) {
 		// dont need to check
@@ -145,6 +151,11 @@ public class FolderManagerWithQuota implements FolderManager {
 		Future<Void> future = Future.future();
 		quotaService.incrementStorage(user.getUserId(), amount, this.quotaThreshold, ev -> {
 			if (ev.isRight()) {
+				JsonObject j = ev.right().getValue();
+				UserUtils.addSessionAttribute(eventBus, user.getUserId(), "storage", j.getLong("storage"), null);
+				if (j.getBoolean("notify", false)) {
+					quotaService.notifySmallAmountOfFreeSpace(user.getUserId());
+				}
 				future.complete(null);
 			} else {
 				future.fail(ev.left().getValue());
@@ -239,6 +250,13 @@ public class FolderManagerWithQuota implements FolderManager {
 	public void share(String id, ElementShareOperations shareOperations, Handler<AsyncResult<JsonObject>> h) {
 		// dont need to change
 		this.folderManager.share(id, shareOperations, h);
+	}
+
+	@Override
+	public void shareAll(Collection<String> ids, ElementShareOperations shareOperations,
+			Handler<AsyncResult<Collection<JsonObject>>> h) {
+		// dont need to change
+		this.folderManager.shareAll(ids, shareOperations, h);
 	}
 
 	@Override

@@ -25,8 +25,8 @@ import io.vertx.core.Handler;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
-
 public interface QuotaService {
+	void notifySmallAmountOfFreeSpace(String userId);
 
 	void incrementStorage(String userId, Long size, int threshold, Handler<Either<String, JsonObject>> handler);
 
@@ -40,7 +40,7 @@ public interface QuotaService {
 
 	void update(JsonArray users, long quota, Handler<Either<String, JsonArray>> handler);
 
-	void updateQuotaDefaultMax(String profile,  Long defaultQuota, Long maxQuota,
+	void updateQuotaDefaultMax(String profile, Long defaultQuota, Long maxQuota,
 			Handler<Either<String, JsonObject>> handler);
 
 	void getDefaultMaxQuota(Handler<Either<String, JsonArray>> handler);

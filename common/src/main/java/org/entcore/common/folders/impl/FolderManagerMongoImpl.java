@@ -73,6 +73,16 @@ public class FolderManagerMongoImpl implements FolderManager {
 		if (query.getIdFolder() != null) {
 			builder.withId(query.getIdFolder());
 		}
+
+		if (query.getApplication() != null) {
+			builder.withKeyValue("application", query.getApplication());
+		}
+		if (query.getParams() != null && !query.getParams().isEmpty()) {
+			query.getParams().forEach((key, value) -> {
+				builder.withKeyValue(key, value);
+			});
+		}
+		// query
 		if (query.getHierarchical() != null && query.getHierarchical()) {
 			queryHelper.listRecursive(builder).setHandler(handler);
 		} else {
@@ -135,49 +145,69 @@ public class FolderManagerMongoImpl implements FolderManager {
 
 	public void share(String id, ElementShareOperations shareOperations, Handler<AsyncResult<JsonObject>> h) {
 		UserInfos user = shareOperations.getUser();
-		this.info(id, user, ev -> {
-			if (ev.succeeded()) {
-				// compute shared after sharing
-				final Handler<Either<String, JsonObject>> handler = new Handler<Either<String, JsonObject>>() {
+		queryHelper.findOne(queryHelper.queryBuilder().withId(id).filterByInheritShareAndOwnerWithAction(user,
+				shareOperations.getShareAction())).setHandler(ev -> {
+					if (ev.succeeded()) {
+						// compute shared after sharing
+						final Handler<Either<String, JsonObject>> handler = new Handler<Either<String, JsonObject>>() {
 
-					@Override
-					public void handle(Either<String, JsonObject> event) {
-						if (event.isRight()) {
-							updateShared(id, user, ev -> {
-								if (ev.succeeded()) {
-									h.handle(new DefaultAsyncResult<JsonObject>(event.right().getValue()));
+							@Override
+							public void handle(Either<String, JsonObject> event) {
+								if (event.isRight()) {
+									updateShared(id, user, ev -> {
+										if (ev.succeeded()) {
+											h.handle(new DefaultAsyncResult<JsonObject>(event.right().getValue()));
+										} else {
+											h.handle(new DefaultAsyncResult<>(ev.cause()));
+										}
+									});
 								} else {
-									h.handle(new DefaultAsyncResult<>(ev.cause()));
+									h.handle(new DefaultAsyncResult<>(new Exception(event.left().getValue())));
 								}
-							});
-						} else {
-							h.handle(new DefaultAsyncResult<>(new Exception(event.left().getValue())));
+							}
+						};
+						//
+						switch (shareOperations.getKind()) {
+						case GROUP_SHARE:
+							this.shareService.groupShare(user.getUserId(), shareOperations.getGroupId(), id,
+									shareOperations.getActions(), handler);
+							break;
+						case GROUP_SHARE_REMOVE:
+							this.shareService.removeGroupShare(shareOperations.getGroupId(), id,
+									shareOperations.getActions(), handler);
+							break;
+						case USER_SHARE:
+							this.shareService.userShare(user.getUserId(), shareOperations.getUserId(), id,
+									shareOperations.getActions(), handler);
+							break;
+						case USER_SHARE_REMOVE:
+							this.shareService.removeUserShare(shareOperations.getUserId(), id,
+									shareOperations.getActions(), handler);
+							break;
+						case SHARE_OBJECT:
+							this.shareService.share(shareOperations.getUserId(), id, shareOperations.getShare(),
+									handler);
+							break;
 						}
+					} else {
+						h.handle(ev);
 					}
-				};
-				//
-				switch (shareOperations.getKind()) {
-				case GROUP_SHARE:
-					this.shareService.groupShare(user.getUserId(), shareOperations.getGroupId(), id,
-							shareOperations.getActions(), handler);
-					break;
-				case GROUP_SHARE_REMOVE:
-					this.shareService.removeGroupShare(shareOperations.getGroupId(), id, shareOperations.getActions(),
-							handler);
-					break;
-				case USER_SHARE:
-					this.shareService.userShare(user.getUserId(), shareOperations.getUserId(), id,
-							shareOperations.getActions(), handler);
-					break;
-				case USER_SHARE_REMOVE:
-					this.shareService.removeUserShare(shareOperations.getUserId(), id, shareOperations.getActions(),
-							handler);
-					break;
-				}
-			} else {
-				h.handle(ev);
-			}
-		});
+				});
+	}
+
+	@Override
+	public void shareAll(Collection<String> ids, ElementShareOperations shareOperations,
+			Handler<AsyncResult<Collection<JsonObject>>> h) {
+		@SuppressWarnings("rawtypes")
+		List<Future> futures = ids.stream().map(id -> {
+			Future<JsonObject> future = Future.future();
+			share(id, shareOperations, future.completer());
+			return future;
+		}).collect(Collectors.toList());
+		CompositeFuture.all(futures).map(res -> {
+			Collection<JsonObject> temp = res.list();
+			return temp;
+		}).setHandler(h);
 	}
 
 	@Override
@@ -422,6 +452,21 @@ public class FolderManagerMongoImpl implements FolderManager {
 				handler.handle(toError(msg.cause()));
 			}
 		});
+	}
+
+	@Override
+	public void moveAll(Collection<String> sourceIds, String destinationFolderId, UserInfos user,
+			Handler<AsyncResult<JsonArray>> handler) {
+		@SuppressWarnings("rawtypes")
+		List<Future> futures = sourceIds.stream().map(sourceId -> {
+			Future<JsonObject> future = Future.future();
+			this.move(sourceId, destinationFolderId, user, future.completer());
+			return future;
+		}).collect(Collectors.toList());
+		CompositeFuture.all(futures).map(results -> {
+			return results.list().stream().map(o -> (JsonObject) o).collect(JsonArray::new, JsonArray::add,
+					JsonArray::addAll);
+		}).setHandler(handler);
 	}
 
 	@Override

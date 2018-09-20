@@ -4,9 +4,11 @@ import java.util.List;
 
 import org.entcore.common.user.UserInfos;
 
+import io.vertx.core.json.JsonObject;
+
 public class ElementShareOperations {
 	public enum ShareOperationKind {
-		USER_SHARE, USER_SHARE_REMOVE, GROUP_SHARE, GROUP_SHARE_REMOVE
+		USER_SHARE, USER_SHARE_REMOVE, GROUP_SHARE, GROUP_SHARE_REMOVE, SHARE_OBJECT
 	}
 
 	ShareOperationKind kind;
@@ -14,40 +16,61 @@ public class ElementShareOperations {
 	String userId;
 	String groupId;
 	List<String> actions;
+	JsonObject share;
+	String shareAction;
 
-	public static ElementShareOperations addShareUser(UserInfos user, String userId, List<String> actions) {
+	public static ElementShareOperations addShareObject(String shareAction, UserInfos user, String userId,
+			JsonObject shareO) {
+		ElementShareOperations share = new ElementShareOperations();
+		share.kind = ShareOperationKind.SHARE_OBJECT;
+		share.user = user;
+		share.userId = userId;
+		share.share = shareO;
+		share.shareAction = shareAction;
+		return share;
+	}
+
+	public static ElementShareOperations addShareUser(String shareAction, UserInfos user, String userId,
+			List<String> actions) {
 		ElementShareOperations share = new ElementShareOperations();
 		share.kind = ShareOperationKind.USER_SHARE;
 		share.user = user;
 		share.userId = userId;
 		share.actions = actions;
+		share.shareAction = shareAction;
 		return share;
 	}
 
-	public static ElementShareOperations removeShareUser(UserInfos user, String userId, List<String> actions) {
+	public static ElementShareOperations removeShareUser(String shareAction, UserInfos user, String userId,
+			List<String> actions) {
 		ElementShareOperations share = new ElementShareOperations();
 		share.kind = ShareOperationKind.USER_SHARE_REMOVE;
 		share.user = user;
 		share.userId = userId;
 		share.actions = actions;
+		share.shareAction = shareAction;
 		return share;
 	}
 
-	public static ElementShareOperations addShareGroup(UserInfos user, String groupId, List<String> actions) {
+	public static ElementShareOperations addShareGroup(String shareAction, UserInfos user, String groupId,
+			List<String> actions) {
 		ElementShareOperations share = new ElementShareOperations();
 		share.kind = ShareOperationKind.GROUP_SHARE;
 		share.user = user;
 		share.groupId = groupId;
 		share.actions = actions;
+		share.shareAction = shareAction;
 		return share;
 	}
 
-	public static ElementShareOperations removeShareGroup(UserInfos user, String groupId, List<String> actions) {
+	public static ElementShareOperations removeShareGroup(String shareAction, UserInfos user, String groupId,
+			List<String> actions) {
 		ElementShareOperations share = new ElementShareOperations();
 		share.kind = ShareOperationKind.GROUP_SHARE_REMOVE;
 		share.user = user;
 		share.groupId = groupId;
 		share.actions = actions;
+		share.shareAction = shareAction;
 		return share;
 	}
 
@@ -91,4 +114,19 @@ public class ElementShareOperations {
 		this.actions = actions;
 	}
 
+	public JsonObject getShare() {
+		return share;
+	}
+
+	public String getShareAction() {
+		return shareAction;
+	}
+
+	public void setShareAction(String shareAction) {
+		this.shareAction = shareAction;
+	}
+
+	public void setShare(JsonObject share) {
+		this.share = share;
+	}
 }

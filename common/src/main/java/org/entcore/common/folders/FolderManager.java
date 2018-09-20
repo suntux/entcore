@@ -150,6 +150,17 @@ public interface FolderManager {
 
 	/**
 	 * 
+	 * @param sourceId            collection of id's file or the folder
+	 * @param destinationFolderId
+	 * @param user                moving the folder
+	 * @param handler             emit moved files an error if destination does not
+	 *                            exists or an error occurs
+	 */
+	void moveAll(Collection<String> sourceId, String destinationFolderId, UserInfos user,
+			final Handler<AsyncResult<JsonArray>> handler);
+
+	/**
+	 * 
 	 * @param sourceId            of the file or the folder
 	 * @param destinationFolderId the id of the destination folder or empty if the
 	 *                            destination is root
@@ -212,4 +223,13 @@ public interface FolderManager {
 	 * @param h               handler that emit the shared result
 	 */
 	public void share(String id, ElementShareOperations shareOperations, Handler<AsyncResult<JsonObject>> h);
+
+	/**
+	 * 
+	 * @param ids             collection of the file or the folder IDS to share
+	 * @param shareOperations defining what kind of share operation to do
+	 * @param h               handler that emit the shared result
+	 */
+	public void shareAll(Collection<String> ids, ElementShareOperations shareOperations,
+			Handler<AsyncResult<Collection<JsonObject>>> h);
 }
