@@ -19,22 +19,32 @@
 
 package org.entcore.workspace;
 
-import io.vertx.core.DeploymentOptions;
-import io.vertx.core.http.HttpServerOptions;
+import java.util.HashMap;
+
+import org.entcore.common.folders.FolderManager;
+import org.entcore.common.folders.QuotaService;
+import org.entcore.common.folders.impl.FolderManagerMongoImpl;
+import org.entcore.common.folders.impl.FolderManagerWithQuota;
 import org.entcore.common.http.BaseServer;
+import org.entcore.common.notification.TimelineHelper;
+import org.entcore.common.share.impl.GenericShareService;
+import org.entcore.common.share.impl.MongoDbShareService;
+import org.entcore.common.storage.Storage;
+import org.entcore.common.storage.StorageFactory;
 import org.entcore.common.storage.impl.MongoDBApplicationStorage;
 import org.entcore.workspace.controllers.AudioRecorderHandler;
 import org.entcore.workspace.controllers.QuotaController;
 import org.entcore.workspace.dao.DocumentDao;
 import org.entcore.workspace.security.WorkspaceResourcesProvider;
-import org.entcore.workspace.service.QuotaService;
 import org.entcore.workspace.service.WorkspaceService;
 import org.entcore.workspace.service.impl.AudioRecorderWorker;
 import org.entcore.workspace.service.impl.DefaultQuotaService;
 import org.entcore.workspace.service.impl.WorkspaceRepositoryEvents;
-import org.entcore.common.storage.Storage;
-import org.entcore.common.storage.StorageFactory;
 import org.entcore.workspace.service.impl.WorkspaceSearchingEvents;
+
+import fr.wseduc.mongodb.MongoDb;
+import io.vertx.core.DeploymentOptions;
+import io.vertx.core.http.HttpServerOptions;
 
 public class Workspace extends BaseServer {
 
@@ -50,14 +60,25 @@ public class Workspace extends BaseServer {
 		WorkspaceService service = new WorkspaceService();
 
 		final boolean neo4jPlugin = config.getBoolean("neo4jPlugin", false);
-		final QuotaService quotaService = new DefaultQuotaService(neo4jPlugin);
+		final QuotaService quotaService = new DefaultQuotaService(neo4jPlugin,
+				new TimelineHelper(vertx, vertx.eventBus(), config));
 
-		setRepositoryEvents(new WorkspaceRepositoryEvents(vertx, storage,
-						config.getBoolean("share-old-groups-to-users", false)));
-
+		setRepositoryEvents(
+				new WorkspaceRepositoryEvents(vertx, storage, config.getBoolean("share-old-groups-to-users", false)));
+		//
+		// FOLDER MANAGER
+		//
+		GenericShareService shareService = new MongoDbShareService(vertx.eventBus(), MongoDb.getInstance(),
+				DocumentDao.DOCUMENTS_COLLECTION, securedActions, new HashMap<>());
+		final int threshold = config.getInteger("alertStorage", 80);
+		FolderManager folderManager = new FolderManagerMongoImpl(DocumentDao.DOCUMENTS_COLLECTION, storage,
+				vertx.fileSystem(), shareService);
+		FolderManager folderManagerQuota = new FolderManagerWithQuota(DocumentDao.DOCUMENTS_COLLECTION, threshold,
+				quotaService, folderManager, vertx.eventBus());
 		if (config.getBoolean("searching-event", true)) {
-			setSearchingEvents(new WorkspaceSearchingEvents(DocumentDao.DOCUMENTS_COLLECTION));
+			setSearchingEvents(new WorkspaceSearchingEvents(folderManagerQuota));
 		}
+		//
 
 		service.setQuotaService(quotaService);
 		service.setStorage(storage);
@@ -70,8 +91,8 @@ public class Workspace extends BaseServer {
 		if (config.getInteger("wsPort") != null) {
 			vertx.deployVerticle(AudioRecorderWorker.class, new DeploymentOptions().setConfig(config).setWorker(true));
 			HttpServerOptions options = new HttpServerOptions().setMaxWebsocketFrameSize(1024 * 1024);
-			vertx.createHttpServer(options)
-					.websocketHandler(new AudioRecorderHandler(vertx)).listen(config.getInteger("wsPort"));
+			vertx.createHttpServer(options).websocketHandler(new AudioRecorderHandler(vertx))
+					.listen(config.getInteger("wsPort"));
 		}
 
 	}

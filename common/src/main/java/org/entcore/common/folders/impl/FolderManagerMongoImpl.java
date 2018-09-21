@@ -524,11 +524,11 @@ public class FolderManagerMongoImpl implements FolderManager {
 
 	}
 
-	private Future<JsonArray> copyFolderRecursively(String oldParentId, Optional<String> newParentId) {
+	private Future<JsonArray> copyFolderRecursively(UserInfos user, String oldParentId, Optional<String> newParentId) {
 		// list all tree including folders excluding deleted files
 		return queryHelper.findAll(queryHelper.queryBuilder().withParent(oldParentId).withExcludeDeleted())
 				.compose(children -> {
-					return this.copyFile(children.stream().map(u -> (JsonObject) u).collect(Collectors.toSet()),
+					return this.copyFile(user, children.stream().map(u -> (JsonObject) u).collect(Collectors.toSet()),
 							newParentId);
 				}).compose(copies -> {
 					// for each folder copy recursively
@@ -536,7 +536,7 @@ public class FolderManagerMongoImpl implements FolderManager {
 							.filter(o -> o.getInteger("eType", -1) == FOLDER_TYPE).collect(Collectors.toSet());
 					@SuppressWarnings("rawtypes")
 					List<Future> futures = folders.stream().map(folder -> {
-						return copyFolderRecursively(folder.getString("copyFromId"),
+						return copyFolderRecursively(user, folder.getString("copyFromId"),
 								Optional.ofNullable(folder.getString("_id")));
 					}).collect(Collectors.toList());
 					// merge children result and current result
@@ -549,7 +549,7 @@ public class FolderManagerMongoImpl implements FolderManager {
 				});
 	}
 
-	private Future<JsonArray> copyFile(Collection<JsonObject> originals, Optional<String> parent) {
+	private Future<JsonArray> copyFile(UserInfos user, Collection<JsonObject> originals, Optional<String> parent) {
 		return StorageHelper.copyFileInStorage(storage, originals).compose(oldFileIdForNewFileId -> {
 			// set newFileIds and parent
 			JsonArray copies = originals.stream().map(o -> {
@@ -561,6 +561,8 @@ public class FolderManagerMongoImpl implements FolderManager {
 				} else {
 					copy.remove("eParent");
 				}
+				copy.put("owner", user.getUserId());
+				copy.put("ownerName", user.getUsername());
 				StorageHelper.replaceAll(copy, oldFileIdForNewFileId);
 				return copy;
 			}).collect(JsonArray::new, JsonArray::add, JsonArray::addAll);
@@ -600,10 +602,10 @@ public class FolderManagerMongoImpl implements FolderManager {
 				String id = original.getString("_id");
 				switch (DocumentHelper.getType(original)) {
 				case FOLDER_TYPE:
-					copyFolderRecursively(id, safeDestFolderId).setHandler(handler);
+					copyFolderRecursively(user, id, safeDestFolderId).setHandler(handler);
 					return;
 				case FILE_TYPE:
-					copyFile(Arrays.asList(original), safeDestFolderId).setHandler(handler);
+					copyFile(user, Arrays.asList(original), safeDestFolderId).setHandler(handler);
 					return;
 				default:
 					handler.handle(toError("Could not determine the type (file or folder) for id:" + id));
