@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
 import org.entcore.common.folders.ElementQuery;
 import org.entcore.common.folders.ElementShareOperations;
 import org.entcore.common.folders.FolderManager;
-import org.entcore.common.folders.impl.QueryHelper.FileQueryBuilder;
+import org.entcore.common.folders.impl.QueryHelper.DocumentQueryBuilder;
 import org.entcore.common.share.ShareService;
 import org.entcore.common.storage.Storage;
 import org.entcore.common.user.UserInfos;
@@ -58,8 +58,29 @@ public class FolderManagerMongoImpl implements FolderManager {
 
 	@Override
 	public void findByQuery(ElementQuery query, UserInfos user, Handler<AsyncResult<JsonArray>> handler) {
-		FileQueryBuilder builder = queryHelper.queryBuilder();
-		builder.filterByInheritShareAndOwner(user);
+		DocumentQueryBuilder builder = queryHelper.queryBuilder();
+		if (query.getVisibilities() != null) {
+			// visibility and shared or owner
+			if (query.getShared()) {
+				builder.filterByInheritSharedAndOwnerVisibilities(user, query.getVisibilities());
+			} else {
+				builder.filterByOwnerVisibilities(user, query.getVisibilities());
+			}
+		} else {
+			// search by share or owner
+			if (query.getShared()) {
+				builder.filterByInheritShareAndOwner(user);
+			} else {
+				builder.filterByOwner(user);
+			}
+		}
+		//
+		if (query.getId() != null) {
+			builder.withId(query.getId());
+		}
+		if (query.getType() != null) {
+			builder.withFileType(query.getType());
+		}
 		if (query.getTrash() != null) {
 			if (query.getTrash()) {
 				builder.withOnlyDeletedFile();
@@ -67,20 +88,32 @@ public class FolderManagerMongoImpl implements FolderManager {
 				builder.withExcludeDeleted();
 			}
 		}
-		if (query.getSearchByName() != null) {
-			builder.withNameMatch(query.getSearchByName());
+		if (query.getParentId() != null) {
+			builder.withParent(query.getParentId());
 		}
-		if (query.getIdFolder() != null) {
-			builder.withId(query.getIdFolder());
-		}
-
 		if (query.getApplication() != null) {
 			builder.withKeyValue("application", query.getApplication());
+		}
+		if (query.getSearchByName() != null) {
+			builder.withNameMatch(query.getSearchByName());
 		}
 		if (query.getParams() != null && !query.getParams().isEmpty()) {
 			query.getParams().forEach((key, value) -> {
 				builder.withKeyValue(key, value);
 			});
+		}
+		// advanced filters
+		if (query.getFullTextSearch() != null) {
+			builder.withFullTextSearch(query.getFullTextSearch());
+		}
+		if (query.getProjection() != null && !query.getProjection().isEmpty()) {
+			builder.withProjections(query.getProjection());
+		}
+		if (query.getSort() != null && !query.getSort().isEmpty()) {
+			builder.withSorts(query.getSort());
+		}
+		if (query.getLimit() != null) {
+			builder.withSkipAndLimit(query.getSkip(), query.getLimit());
 		}
 		// query
 		if (query.getHierarchical() != null && query.getHierarchical()) {
