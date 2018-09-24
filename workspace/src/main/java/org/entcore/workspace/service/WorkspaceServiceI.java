@@ -14,8 +14,34 @@ import java.util.List;
  */
 public interface WorkspaceServiceI {
 
+    public static final String WORKSPACE_NAME = "WORKSPACE";
+
     public void addDocument(final float quality, final String name, final String application, final List<String> thumbnail,
                             final JsonObject doc, final JsonObject uploaded, final Handler<Message<JsonObject>> handler);
+
+    public void updateDocument(final String id, final float quality, final String name, final List<String> thumbnail,
+                               final JsonObject uploaded, UserInfos user, final Handler<Message<JsonObject>> handler);
+
+    public void addAfterUpload(final JsonObject uploaded, final JsonObject doc, String name, String application,
+                                final List<String> thumbs, final Handler<Message<JsonObject>> handler);
+
+    public void updateAfterUpload(final String id, final String name, final JsonObject uploaded,
+                                  final List<String> t, final UserInfos user, final Handler<Message<JsonObject>> handler);
+
+    public void documentProperties(final String id, final Handler<JsonObject> handler);
+
+    public void addComment(final String id, final String comment, final UserInfos user, final Handler<JsonObject> handler);
+
+    public void deleteComment(final String id, final String comment, final Handler<JsonObject> handler);
+
+    public void listRevisions(final String id, final Handler<Either<String, JsonArray>> handler);
+
+    public void getRevision(final String documentId, final String revisionId, final Handler<Either<String, JsonObject>> handler);
+
+    public void deleteAllRevisions(final String documentId, final JsonArray alreadyDeleted);
+
+    public void deleteRevision(final String documentId, final String revisionId, final Handler<Either<String, JsonObject>> handler);
+
     public void emptySize(final UserInfos userInfos, final Handler<Long> emptySizeHandler);
 
     public void incrementStorage(JsonObject added);
@@ -34,5 +60,13 @@ public interface WorkspaceServiceI {
 
     public void updateStorage(JsonArray addeds, JsonArray removeds, final Handler<Either<String, JsonObject>> handler);
 
-    public void deleteAllRevisions(final String documentId, final JsonArray alreadyDeleted);
+    public void findById(String id, final Handler<JsonObject> handler);
+
+    public void findById(String id, String onwer, final Handler<JsonObject> handler);
+
+    public void findById(String id, JsonObject keys, final Handler<JsonObject> handler);
+
+    public void findById(String id, String onwer,  boolean publicOnly, final Handler<JsonObject> handler);
+
+    public void deleteFile(final String id, final JsonObject file, Handler<Either<JsonObject, JsonObject>> handler);
 }

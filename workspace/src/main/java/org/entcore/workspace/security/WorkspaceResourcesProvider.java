@@ -42,6 +42,8 @@ import org.entcore.workspace.service.WorkspaceService;
 import java.util.Arrays;
 import java.util.Map;
 
+import static fr.wseduc.webutils.request.RequestUtils.bodyToJson;
+
 public class WorkspaceResourcesProvider implements ResourcesProvider {
 
 	private MongoDb mongo = MongoDb.getInstance();
@@ -227,17 +229,21 @@ public class WorkspaceResourcesProvider implements ResourcesProvider {
 
 	private void authorizeDocuments(HttpServerRequest request, UserInfos user,
 			String serviceMethod, Handler<Boolean> handler) {
-		String ids = request.params().get("ids");
-		if (ids != null && !ids.trim().isEmpty()) {
-			JsonArray idsArray = new fr.wseduc.webutils.collections.JsonArray(Arrays.asList(ids.split(",")));
-			String query = "{ \"_id\": { \"$in\" : " + idsArray.encode() + "}, "
-					+ "\"$or\" : [{ \"owner\": \"" + user.getUserId() +
-					"\"}, {\"shared\" : { \"$elemMatch\" : " + orSharedElementMatch(user, serviceMethod) + "}}]}";
-			executeCountQuery(request, DocumentDao.DOCUMENTS_COLLECTION,
-					new JsonObject(query), idsArray.size(), handler);
-		} else {
-			handler.handle(false);
-		}
+		bodyToJson(request, new Handler<JsonObject>() {
+			@Override
+			public void handle(JsonObject body) {
+				JsonArray idsArray = body.getJsonArray("id");
+				if (idsArray != null && !idsArray.isEmpty()) {
+					String query = "{ \"_id\": { \"$in\" : " + idsArray.encode() + "}, "
+							+ "\"$or\" : [{ \"owner\": \"" + user.getUserId() +
+							"\"}, {\"shared\" : { \"$elemMatch\" : " + orSharedElementMatch(user, serviceMethod) + "}}]}";
+					executeCountQuery(request, DocumentDao.DOCUMENTS_COLLECTION,
+							new JsonObject(query), idsArray.size(), handler);
+				} else {
+					handler.handle(false);
+				}
+			}
+		});
 	}
 
 	private String orSharedElementMatch(UserInfos user, String serviceMethod) {
