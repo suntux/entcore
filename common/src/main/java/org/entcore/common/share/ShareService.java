@@ -19,16 +19,19 @@
 
 package org.entcore.common.share;
 
-import fr.wseduc.webutils.Either;
-import io.vertx.core.Handler;
-import io.vertx.core.json.JsonObject;
-
 import java.util.List;
+import java.util.Set;
+
+import fr.wseduc.webutils.Either;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Handler;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
 
 public interface ShareService {
 
 	void shareInfos(String userId, String resourceId, String acceptLanguage, String search,
-					Handler<Either<String, JsonObject>> handler);
+			Handler<Either<String, JsonObject>> handler);
 
 	void groupShare(String userId, String groupShareId, String resourceId, List<String> actions,
 			Handler<Either<String, JsonObject>> handler);
@@ -44,4 +47,12 @@ public interface ShareService {
 
 	void share(String userId, String resourceId, JsonObject share, Handler<Either<String, JsonObject>> handler);
 
+	/**
+	 * 
+	 * @param sharedArray shared array
+	 * @param userId      id of current user
+	 * @param h           handler that emit the set of users id concerned by the
+	 *                    share array
+	 */
+	void findUserIdsForShare(JsonArray sharedArray, String userId, Handler<AsyncResult<Set<String>>> h);
 }

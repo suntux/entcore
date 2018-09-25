@@ -220,16 +220,22 @@ public interface FolderManager {
 	 * 
 	 * @param id              of the file or the folder to share
 	 * @param shareOperations defining what kind of share operation to do
-	 * @param h               handler that emit the shared result
+	 * @param h               handler that emit the list of userid who can see files or folders
 	 */
-	public void share(String id, ElementShareOperations shareOperations, Handler<AsyncResult<JsonObject>> h);
+	public void share(String id, ElementShareOperations shareOperations, Handler<AsyncResult<Collection<String>	>> h);
 
 	/**
 	 * 
 	 * @param ids             collection of the file or the folder IDS to share
 	 * @param shareOperations defining what kind of share operation to do
-	 * @param h               handler that emit the shared result
+	 * @param h               handler that emit the list of userid who can see files or folders
 	 */
 	public void shareAll(Collection<String> ids, ElementShareOperations shareOperations,
-			Handler<AsyncResult<Collection<JsonObject>>> h);
+			Handler<AsyncResult<Collection<String>>> h);
+	/**
+	 * 
+	 * @param ids
+	 * @param h
+	 */
+	void markAsFavorites(Collection<String>ids,Handler<AsyncResult<Collection<JsonObject>>> h);
 }

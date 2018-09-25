@@ -176,61 +176,59 @@ public class FolderManagerMongoImpl implements FolderManager {
 		});
 	}
 
-	public void share(String id, ElementShareOperations shareOperations, Handler<AsyncResult<JsonObject>> h) {
+	public void share(String id, ElementShareOperations shareOperations, Handler<AsyncResult<Collection<String>>> hh) {
 		UserInfos user = shareOperations.getUser();
+		// TODO owner or shared action
 		queryHelper.findOne(queryHelper.queryBuilder().withId(id).filterByInheritShareAndOwnerWithAction(user,
-				shareOperations.getShareAction())).setHandler(ev -> {
-					if (ev.succeeded()) {
-						// compute shared after sharing
-						final Handler<Either<String, JsonObject>> handler = new Handler<Either<String, JsonObject>>() {
+				shareOperations.getShareAction())).compose(ev -> {
+					Future<JsonObject> futureShared = Future.future();
+					// compute shared after sharing
+					final Handler<Either<String, JsonObject>> handler = new Handler<Either<String, JsonObject>>() {
 
-							@Override
-							public void handle(Either<String, JsonObject> event) {
-								if (event.isRight()) {
-									updateShared(id, user, ev -> {
-										if (ev.succeeded()) {
-											h.handle(new DefaultAsyncResult<JsonObject>(event.right().getValue()));
-										} else {
-											h.handle(new DefaultAsyncResult<>(ev.cause()));
-										}
-									});
-								} else {
-									h.handle(new DefaultAsyncResult<>(new Exception(event.left().getValue())));
-								}
+						@Override
+						public void handle(Either<String, JsonObject> event) {
+							if (event.isRight()) {
+								// TODO save current shared?
+								updateShared(id, user, ev -> {
+									if (ev.succeeded()) {
+										futureShared.complete(e);
+									} else {
+
+									}
+								});
+							} else {
+								futureShared.fail(event.left().getValue());
 							}
-						};
-						//
-						switch (shareOperations.getKind()) {
-						case GROUP_SHARE:
-							this.shareService.groupShare(user.getUserId(), shareOperations.getGroupId(), id,
-									shareOperations.getActions(), handler);
-							break;
-						case GROUP_SHARE_REMOVE:
-							this.shareService.removeGroupShare(shareOperations.getGroupId(), id,
-									shareOperations.getActions(), handler);
-							break;
-						case USER_SHARE:
-							this.shareService.userShare(user.getUserId(), shareOperations.getUserId(), id,
-									shareOperations.getActions(), handler);
-							break;
-						case USER_SHARE_REMOVE:
-							this.shareService.removeUserShare(shareOperations.getUserId(), id,
-									shareOperations.getActions(), handler);
-							break;
-						case SHARE_OBJECT:
-							this.shareService.share(shareOperations.getUserId(), id, shareOperations.getShare(),
-									handler);
-							break;
 						}
-					} else {
-						h.handle(ev);
+					};
+					//
+					switch (shareOperations.getKind()) {
+					case GROUP_SHARE:
+						this.shareService.groupShare(user.getUserId(), shareOperations.getGroupId(), id,
+								shareOperations.getActions(), handler);
+						break;
+					case GROUP_SHARE_REMOVE:
+						this.shareService.removeGroupShare(shareOperations.getGroupId(), id,
+								shareOperations.getActions(), handler);
+						break;
+					case USER_SHARE:
+						this.shareService.userShare(user.getUserId(), shareOperations.getUserId(), id,
+								shareOperations.getActions(), handler);
+						break;
+					case USER_SHARE_REMOVE:
+						this.shareService.removeUserShare(shareOperations.getUserId(), id, shareOperations.getActions(),
+								handler);
+						break;
+					case SHARE_OBJECT:
+						this.shareService.share(shareOperations.getUserId(), id, shareOperations.getShare(), handler);
+						break;
 					}
 				});
 	}
 
 	@Override
 	public void shareAll(Collection<String> ids, ElementShareOperations shareOperations,
-			Handler<AsyncResult<Collection<JsonObject>>> h) {
+			Handler<AsyncResult<Collection<Collection<String>>>> h) {
 		@SuppressWarnings("rawtypes")
 		List<Future> futures = ids.stream().map(id -> {
 			Future<JsonObject> future = Future.future();
