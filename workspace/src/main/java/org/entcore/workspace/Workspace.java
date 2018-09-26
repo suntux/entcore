@@ -34,13 +34,12 @@ import org.entcore.common.storage.StorageFactory;
 import org.entcore.common.storage.impl.MongoDBApplicationStorage;
 import org.entcore.workspace.controllers.AudioRecorderHandler;
 import org.entcore.workspace.controllers.QuotaController;
+import org.entcore.workspace.controllers.WorkspaceController;
 import org.entcore.workspace.dao.DocumentDao;
 import org.entcore.workspace.security.WorkspaceResourcesProvider;
 import org.entcore.workspace.service.WorkspaceService;
-import org.entcore.workspace.service.impl.AudioRecorderWorker;
-import org.entcore.workspace.service.impl.DefaultQuotaService;
-import org.entcore.workspace.service.impl.WorkspaceRepositoryEvents;
-import org.entcore.workspace.service.impl.WorkspaceSearchingEvents;
+import org.entcore.workspace.service.WorkspaceServiceI;
+import org.entcore.workspace.service.impl.*;
 
 import fr.wseduc.mongodb.MongoDb;
 import io.vertx.core.DeploymentOptions;
@@ -78,6 +77,16 @@ public class Workspace extends BaseServer {
 		if (config.getBoolean("searching-event", true)) {
 			setSearchingEvents(new WorkspaceSearchingEvents(folderManagerQuota));
 		}
+		String node = (String) vertx.sharedData().getLocalMap("server").get("node");
+		if (node == null) {
+			node = "";
+		}
+		String imageResizerAddress = node + config.getString("image-resizer-address", "wse.image.resizer");
+		WorkspaceServiceI workspaceService = new DefaultWorkspaceService(storage, MongoDb.getInstance(), threshold, imageResizerAddress,
+				quotaService, folderManager, vertx.eventBus());
+
+		WorkspaceController workspaceController = new WorkspaceController(storage, workspaceService);
+
 		//
 
 		service.setQuotaService(quotaService);

@@ -124,7 +124,7 @@ public class FolderManagerMongoImpl implements FolderManager {
 	}
 
 	@Override
-	public void addFile(Optional<String> parentId, JsonObject doc, UserInfos user,
+	public void addFile(Optional<String> parentId, JsonObject doc, String ower, String ownerName,
 			Handler<AsyncResult<JsonObject>> handler) {
 		Future<JsonObject> future = parentId.isPresent() ? this.mergeShared(parentId.get(), doc)
 				: Future.succeededFuture();
@@ -136,15 +136,15 @@ public class FolderManagerMongoImpl implements FolderManager {
 			doc.put("eType", FILE_TYPE);
 			doc.put("created", now);
 			doc.put("modified", now);
-			doc.put("owner", user.getUserId());
-			doc.put("ownerName", user.getUsername());
+			doc.put("owner", ower);
+			doc.put("ownerName", ownerName);
 			//
 			return queryHelper.insert(doc);
 		}).setHandler(handler);
 	}
 
 	@Override
-	public void updateFile(String id, Optional<String> parentId, JsonObject doc, UserInfos user,
+	public void updateFile(String id, Optional<String> parentId, JsonObject doc,
 			Handler<AsyncResult<JsonObject>> handler) {
 		Future<JsonObject> future = parentId.isPresent() ? this.mergeShared(parentId.get(), doc)
 				: Future.succeededFuture();

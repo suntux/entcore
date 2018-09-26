@@ -1,10 +1,13 @@
 package org.entcore.workspace.service;
 
 import fr.wseduc.webutils.Either;
+import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import org.entcore.common.folders.FolderManager;
+import org.entcore.common.folders.impl.FolderManagerMongoImpl;
 import org.entcore.common.user.UserInfos;
 
 import java.util.List;
@@ -12,18 +15,19 @@ import java.util.List;
 /**
  * Created by sinthu on 24/08/18.
  */
-public interface WorkspaceServiceI {
+public interface WorkspaceServiceI extends FolderManager{
 
     public static final String WORKSPACE_NAME = "WORKSPACE";
 
-    public void addDocument(final float quality, final String name, final String application, final List<String> thumbnail,
-                            final JsonObject doc, final JsonObject uploaded, final Handler<Message<JsonObject>> handler);
+    public void addDocument(final UserInfos user, final float quality, final String name, final String application, final List<String> thumbnail,
+                            final JsonObject doc, final JsonObject uploaded, final Handler<AsyncResult<JsonObject>> handler);
 
     public void updateDocument(final String id, final float quality, final String name, final List<String> thumbnail,
                                final JsonObject uploaded, UserInfos user, final Handler<Message<JsonObject>> handler);
 
     public void addAfterUpload(final JsonObject uploaded, final JsonObject doc, String name, String application,
-                                final List<String> thumbs, final Handler<Message<JsonObject>> handler);
+                                final List<String> thumbs,  final String ownerId, final String ownerName,
+                                    final Handler<AsyncResult<JsonObject>> handler);
 
     public void updateAfterUpload(final String id, final String name, final JsonObject uploaded,
                                   final List<String> t, final UserInfos user, final Handler<Message<JsonObject>> handler);
@@ -68,5 +72,9 @@ public interface WorkspaceServiceI {
 
     public void findById(String id, String onwer,  boolean publicOnly, final Handler<JsonObject> handler);
 
+    public void getQuotaAndUsage(String userId, Handler<Either<String, JsonObject>> handler);
+
+    public void getShareInfos(final String userId, String resourceId, final String acceptLanguage, final String search,
+                              final Handler<Either<String, JsonObject>> handler);
     public void deleteFile(final String id, final JsonObject file, Handler<Either<JsonObject, JsonObject>> handler);
 }

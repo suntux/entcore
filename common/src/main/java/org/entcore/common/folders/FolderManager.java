@@ -25,23 +25,22 @@ public interface FolderManager {
 
 	/**
 	 * 
-	 * @param parentId the folder containing the file
-	 * @param doc      the file object
-	 * @param user     the user saving the file
-	 * @param handler  the handler that emit the file saved
+	 * @param parentId	the folder containing the file
+	 * @param doc     	the file object
+	 * @param ownerId   id of user saving the file
+	 * @param ownerName name of user saving the file
+	 * @param handler  	the handler that emit the file saved
 	 */
-	void addFile(Optional<String> parentId, JsonObject doc, UserInfos user, Handler<AsyncResult<JsonObject>> handler);
+	void addFile(Optional<String> parentId, JsonObject doc, String ownerId, String ownerName, Handler<AsyncResult<JsonObject>> handler);
 
 	/**
 	 * 
 	 * @param id       of the file to update
 	 * @param parentId folder containing the file
 	 * @param doc      the content of the file object
-	 * @param user     the user updating the file
 	 * @param handler  the handler that emit the file object save or an error if any
 	 */
-	void updateFile(String id, Optional<String> parentId, JsonObject doc, UserInfos user,
-			Handler<AsyncResult<JsonObject>> handler);
+	void updateFile(String id, Optional<String> parentId, JsonObject doc, Handler<AsyncResult<JsonObject>> handler);
 
 	/**
 	 * Create a folder as root folder

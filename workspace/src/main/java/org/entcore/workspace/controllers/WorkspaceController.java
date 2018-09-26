@@ -3,7 +3,6 @@ package org.entcore.workspace.controllers;
 import com.mongodb.QueryBuilder;
 import fr.wseduc.bus.BusAddress;
 import fr.wseduc.mongodb.MongoDb;
-import fr.wseduc.mongodb.MongoQueryBuilder;
 import fr.wseduc.mongodb.MongoUpdateBuilder;
 import fr.wseduc.rs.Delete;
 import fr.wseduc.rs.Get;
@@ -28,59 +27,40 @@ import org.entcore.common.events.EventStoreFactory;
 import org.entcore.common.folders.ElementQuery;
 import org.entcore.common.folders.ElementShareOperations;
 import org.entcore.common.http.request.ActionsUtils;
-import org.entcore.common.mongodb.MongoDbResult;
 import org.entcore.common.notification.TimelineHelper;
-import org.entcore.common.share.ShareService;
-import org.entcore.common.share.impl.MongoDbShareService;
 import org.entcore.common.storage.Storage;
 import org.entcore.common.user.UserInfos;
 import org.entcore.common.user.UserUtils;
 import org.entcore.common.folders.FolderManager;
-import org.entcore.common.folders.impl.FolderManagerMongoImpl;
 import org.entcore.workspace.Workspace;
-import org.entcore.workspace.dao.DocumentDao;
-import org.entcore.workspace.dao.GenericDao;
-import org.entcore.workspace.service.FolderService;
-import org.entcore.workspace.service.QuotaService;
 import org.entcore.workspace.service.WorkspaceService;
 import org.entcore.workspace.service.WorkspaceServiceI;
-import org.entcore.workspace.service.impl.DefaultFolderService;
 import org.vertx.java.core.http.RouteMatcher;
 
-import java.io.UnsupportedEncodingException;
-import java.net.URLDecoder;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import static fr.wseduc.webutils.Utils.getOrElse;
 import static fr.wseduc.webutils.request.RequestUtils.bodyToJson;
-import static org.entcore.common.http.response.DefaultResponseHandler.arrayResponseHandler;
-import static org.entcore.common.http.response.DefaultResponseHandler.defaultResponseHandler;
-import static org.entcore.common.http.response.DefaultResponseHandler.defaultAsyncResultHandler;
-import static org.entcore.common.http.response.DefaultResponseHandler.arrayAsyncResultHandler;
+import static org.entcore.common.http.response.DefaultResponseHandler.*;
 import static org.entcore.common.user.UserUtils.getUserInfos;
-import static org.entcore.workspace.dao.DocumentDao.DOCUMENTS_COLLECTION;
 
 public class WorkspaceController extends BaseController {
 
     private EventStore eventStore;
-    private QuotaService quotaService;
-    private ShareService shareService;
     private WorkspaceServiceI workspaceService;
     private TimelineHelper notification;
     private Storage storage;
-    private FolderManager folderManager;
 
     private enum WokspaceEvent { ACCESS, GET_RESOURCE }
 
-    public WorkspaceController(Storage storage) {
+    public WorkspaceController(Storage storage, WorkspaceServiceI workspaceService) {
         this.storage = storage;
+        this.workspaceService = workspaceService;
     }
 
     public void init(Vertx vertx, JsonObject config, RouteMatcher rm,
-                     Map<String, fr.wseduc.webutils.security.SecuredAction> securedActions, String collection) {
+                     Map<String, fr.wseduc.webutils.security.SecuredAction> securedActions) {
         super.init(vertx, config, rm, securedActions);
 
         notification = new TimelineHelper(vertx, eb, config);
@@ -102,7 +82,7 @@ public class WorkspaceController extends BaseController {
                         eventStore.createAndStoreEvent(WokspaceEvent.ACCESS.name(), request);
                         return;
                     }
-                    quotaService.quotaAndUsage(user.getUserId(), new Handler<Either<String, JsonObject>>() {
+                    workspaceService.getQuotaAndUsage(user.getUserId(), new Handler<Either<String, JsonObject>>() {
                         @Override
                         public void handle(Either<String, JsonObject> r) {
                             if (r.isRight()) {
@@ -134,7 +114,7 @@ public class WorkspaceController extends BaseController {
             @Override
             public void handle(final UserInfos user) {
                 if (user != null) {
-                    shareService.shareInfos(user.getUserId(), id, I18n.acceptLanguage(request),
+                    workspaceService.getShareInfos(user.getUserId(), id, I18n.acceptLanguage(request),
                             request.params().get("search"), defaultResponseHandler(request));
                 } else {
                     unauthorized(request);
@@ -188,9 +168,9 @@ public class WorkspaceController extends BaseController {
                             }
                         };
                         if(groupId != null){
-                            folderManager.share(id, ElementShareOperations.addShareGroup(sharedMethod, user, groupId, actions), handler);
+                            workspaceService.share(id, ElementShareOperations.addShareGroup(sharedMethod, user, groupId, actions), handler);
                         }else{
-                            folderManager.share(id, ElementShareOperations.addShareUser(sharedMethod, user, userId, actions), handler);
+                            workspaceService.share(id, ElementShareOperations.addShareUser(sharedMethod, user, userId, actions), handler);
                         }
                     }
                 });
@@ -229,9 +209,9 @@ public class WorkspaceController extends BaseController {
                         if (user != null) {
                             String removeMethod = "org-entcore-workspace-controllers-WorkspaceController|removeShare";
                             if (groupId != null)
-                                folderManager.share(id, ElementShareOperations.removeShareGroup(removeMethod, user, groupId, actions), defaultAsyncResultHandler(request));
+                                workspaceService.share(id, ElementShareOperations.removeShareGroup(removeMethod, user, groupId, actions), asyncDefaultResponseHandler(request));
                             else
-                                folderManager.share(id, ElementShareOperations.removeShareUser(removeMethod, user, userId, actions), defaultAsyncResultHandler(request));
+                                workspaceService.share(id, ElementShareOperations.removeShareUser(removeMethod, user, userId, actions), asyncDefaultResponseHandler(request));
 
                         } else {
                             unauthorized(request);
@@ -265,8 +245,7 @@ public class WorkspaceController extends BaseController {
                             }
                         }
                     };
-                    //TODO : remove id
-                    folderManager.share(id, ElementShareOperations.addShareObject(shareMethod, user, id, body), handler);
+                    workspaceService.share(id, ElementShareOperations.addShareObject(shareMethod, user, body), handler);
                 });
             } else {
                 unauthorized(request);
@@ -286,12 +265,6 @@ public class WorkspaceController extends BaseController {
                 if (userInfos != null) {
 
                     final JsonObject doc = new JsonObject();
-                    //TODO : use addfile
-                    String now = MongoDb.formatDate(new Date());
-                    doc.put("created", now);
-                    doc.put("modified", now);
-                    doc.put("owner", userInfos.getUserId());
-                    doc.put("ownerName", userInfos.getUsername());
                     float quality = checkQuality(request.params().get("quality"));
                     String name = request.params().get("name");
                     List<String> thumbnail = request.params().getAll("thumbnail");
@@ -314,16 +287,7 @@ public class WorkspaceController extends BaseController {
                                 @Override
                                 public void handle(final JsonObject uploaded) {
                                     if ("ok".equals(uploaded.getString("status"))) {
-                                        workspaceService.addDocument(quality, name, application, thumbnail, doc, uploaded, new Handler<Message<JsonObject>>() {
-                                            @Override
-                                            public void handle(Message<JsonObject> res) {
-                                                if ("ok".equals(res.body().getString("status"))) {
-                                                    renderJson(request, res.body(), 201);
-                                                } else {
-                                                    renderError(request, res.body());
-                                                }
-                                            }
-                                        });
+                                        workspaceService.addDocument(userInfos, quality, name, application, thumbnail, doc, uploaded, asyncDefaultResponseHandler(request, 201));
                                     } else {
                                         badRequest(request, uploaded.getString("message"));
                                     }
@@ -373,9 +337,9 @@ public class WorkspaceController extends BaseController {
 
                         if (userInfos != null) {
                             if(parentFolderId == null || parentFolderId.trim().isEmpty())
-                                folderManager.createFolder(new JsonObject().put("name", name), userInfos, defaultAsyncResultHandler(request, 201));
+                                workspaceService.createFolder(new JsonObject().put("name", name), userInfos, asyncDefaultResponseHandler(request, 201));
                             else
-                                folderManager.createFolder(parentFolderId, userInfos, new JsonObject().put("name", name), defaultAsyncResultHandler(request, 201));
+                                workspaceService.createFolder(parentFolderId, userInfos, new JsonObject().put("name", name), asyncDefaultResponseHandler(request, 201));
                         } else {
                             unauthorized(request);
                         }
@@ -403,7 +367,7 @@ public class WorkspaceController extends BaseController {
                     @Override
                     public void handle(final UserInfos userInfos) {
                         if (userInfos != null) {
-                            folderManager.copy(id, Optional.ofNullable(parentFolderId), userInfos, new Handler<AsyncResult<JsonArray>>() {
+                            workspaceService.copy(id, Optional.ofNullable(parentFolderId), userInfos, new Handler<AsyncResult<JsonArray>>() {
                                 @Override
                                 public void handle(AsyncResult<JsonArray> event) {
                                     if(event.succeeded()){
@@ -443,7 +407,7 @@ public class WorkspaceController extends BaseController {
                     @Override
                     public void handle(final UserInfos userInfos) {
                         if (userInfos != null) {
-                            folderManager.move(id, parentFolderId, userInfos, defaultAsyncResultHandler(request));
+                            workspaceService.move(id, parentFolderId, userInfos, asyncDefaultResponseHandler(request));
                         } else {
                             unauthorized(request);
                         }
@@ -465,7 +429,7 @@ public class WorkspaceController extends BaseController {
             @Override
             public void handle(final UserInfos userInfos) {
                 if (userInfos != null) {
-                    folderManager.trash(id, userInfos, arrayAsyncResultHandler(request));
+                    workspaceService.trash(id, userInfos, asyncArrayResponseHandler(request));
                 } else {
                     unauthorized(request);
                 }
@@ -485,7 +449,7 @@ public class WorkspaceController extends BaseController {
             @Override
             public void handle(final UserInfos userInfos) {
                 if (userInfos != null) {
-                    folderManager.restore(id, userInfos, arrayAsyncResultHandler(request));
+                    workspaceService.restore(id, userInfos, asyncArrayResponseHandler(request));
                 } else {
                     unauthorized(request);
                 }
@@ -505,7 +469,7 @@ public class WorkspaceController extends BaseController {
             @Override
             public void handle(final UserInfos userInfos) {
                 if (userInfos != null) {
-                    folderManager.delete(id, userInfos, new Handler<AsyncResult<JsonArray>>() {
+                    workspaceService.delete(id, userInfos, new Handler<AsyncResult<JsonArray>>() {
                         @Override
                         public void handle(AsyncResult<JsonArray> event) {
                             if(event.succeeded()){
@@ -546,7 +510,7 @@ public class WorkspaceController extends BaseController {
                     query.setHierarchical(hierarchical);
                     query.setParentId(parentId);
                     query.setApplication(WorkspaceService.WORKSPACE_NAME);
-                    folderManager.findByQuery(query, userInfos, arrayAsyncResultHandler(request));
+                    workspaceService.findByQuery(query, userInfos, asyncArrayResponseHandler(request));
                 } else {
                     unauthorized(request);
                 }
@@ -727,7 +691,7 @@ public class WorkspaceController extends BaseController {
                         @Override
                         public void handle(JsonObject body) {
                             JsonArray ids = body.getJsonArray("id");
-                            folderManager.copyAll(ids.getList(), Optional.ofNullable(request.params().get("folder")), user, new Handler<AsyncResult<JsonArray>>() {
+                            workspaceService.copyAll(ids.getList(), Optional.ofNullable(request.params().get("folder")), user, new Handler<AsyncResult<JsonArray>>() {
                                 @Override
                                 public void handle(AsyncResult<JsonArray> event) {
                                     if(event.succeeded()){
@@ -756,7 +720,7 @@ public class WorkspaceController extends BaseController {
             @Override
             public void handle(UserInfos user) {
                 if (user != null && user.getUserId() != null) {
-                    folderManager.copy(id, Optional.ofNullable(folder), user, new Handler<AsyncResult<JsonArray>>() {
+                    workspaceService.copy(id, Optional.ofNullable(folder), user, new Handler<AsyncResult<JsonArray>>() {
                         @Override
                         public void handle(AsyncResult<JsonArray> event) {
                             if(event.succeeded()){
@@ -796,7 +760,7 @@ public class WorkspaceController extends BaseController {
                     query.setHierarchical(hierarchical);
                     query.setType(FolderManager.FOLDER_TYPE);
 
-                    folderManager.findByQuery(query, user, event -> {
+                    workspaceService.findByQuery(query, user, event -> {
                         if(event.succeeded()){
                             Set<String> folders = new HashSet<String>();
                             for (Object value : event.result()) {
@@ -894,7 +858,7 @@ public class WorkspaceController extends BaseController {
             @Override
             public void handle(final UserInfos user) {
                 if (user != null) {
-                    folderManager.move(request.params().get("id"), folderId, user, defaultAsyncResultHandler(request));
+                    workspaceService.move(request.params().get("id"), folderId, user, asyncDefaultResponseHandler(request));
                 } else {
                     unauthorized(request);
                 }
@@ -909,7 +873,7 @@ public class WorkspaceController extends BaseController {
             @Override
             public void handle(final UserInfos user) {
                 if (user != null) {
-                    folderManager.trash(request.params().get("id"), user, arrayAsyncResultHandler(request));
+                    workspaceService.trash(request.params().get("id"), user, asyncArrayResponseHandler(request));
                 } else {
                     unauthorized(request);
                 }
@@ -928,7 +892,7 @@ public class WorkspaceController extends BaseController {
                         @Override
                         public void handle(JsonObject body) {
                             JsonArray ids = body.getJsonArray("id");
-                            folderManager.moveAll(ids.getList(), request.params().get("folder"), user, new Handler<AsyncResult<JsonArray>>() {
+                            workspaceService.moveAll(ids.getList(), request.params().get("folder"), user, new Handler<AsyncResult<JsonArray>>() {
                                 @Override
                                 public void handle(AsyncResult<JsonArray> event) {
                                     if(event.succeeded()){
@@ -970,7 +934,7 @@ public class WorkspaceController extends BaseController {
                         query.setVisibilities(new HashSet<>(filterQuery));
                     }
 
-                    folderManager.findByQuery(query, user, arrayAsyncResultHandler(request));
+                    workspaceService.findByQuery(query, user, asyncArrayResponseHandler(request));
                 } else {
                     unauthorized(request);
                 }
@@ -1002,7 +966,7 @@ public class WorkspaceController extends BaseController {
                     query.setType(FolderManager.FILE_TYPE);
 
 
-                    folderManager.findByQuery(query, user, arrayAsyncResultHandler(request));
+                    workspaceService.findByQuery(query, user, asyncArrayResponseHandler(request));
                 } else {
                     unauthorized(request);
                 }
@@ -1020,7 +984,7 @@ public class WorkspaceController extends BaseController {
                 if (user != null && user.getUserId() != null) {
                     ElementQuery query = new ElementQuery(false);
                     query.setTrash(true);
-                    folderManager.findByQuery(query, user, arrayAsyncResultHandler(request));
+                    workspaceService.findByQuery(query, user, asyncArrayResponseHandler(request));
                 } else {
                     unauthorized(request);
                 }
@@ -1035,7 +999,7 @@ public class WorkspaceController extends BaseController {
             @Override
             public void handle(final UserInfos userInfos) {
                 if (userInfos != null) {
-                    folderManager.restore(request.params().get("id"), userInfos, arrayAsyncResultHandler(request));
+                    workspaceService.restore(request.params().get("id"), userInfos, asyncArrayResponseHandler(request));
                 } else {
                     unauthorized(request);
                 }
@@ -1078,7 +1042,9 @@ public class WorkspaceController extends BaseController {
     private void addDocument(final Message<JsonObject> message) {
         JsonObject uploaded = message.body().getJsonObject("uploaded");
         JsonObject doc = message.body().getJsonObject("document");
-        if (doc == null || uploaded == null) {
+        String ownerId = doc.getString("owner");
+        String ownerName = doc.getString("ownerName");
+        if (doc == null || uploaded == null || ownerId == null || ownerName == null) {
             message.reply(new JsonObject().put("status", "error")
                     .put("message", "missing.attribute"));
             return;
@@ -1090,11 +1056,14 @@ public class WorkspaceController extends BaseController {
         for (int i = 0; i < t.size(); i++) {
             thumbs.add(t.getString(i));
         }
-        workspaceService.addAfterUpload(uploaded, doc,  name, application, thumbs, new Handler<Message<JsonObject>>() {
+        workspaceService.addAfterUpload(uploaded, doc,  name, application, thumbs, ownerId, ownerName, new Handler<AsyncResult<JsonObject>>() {
             @Override
-            public void handle(Message<JsonObject> m) {
-                if (m != null) {
-                    message.reply(m.body());
+            public void handle(AsyncResult<JsonObject> m) {
+                if(m.succeeded()){
+                    message.reply(m.result());
+                }else{
+                    message.reply(new JsonObject().put("status", "error")
+                            .put("message", m.cause().getMessage()));
                 }
             }
         });
@@ -1154,8 +1123,7 @@ public class WorkspaceController extends BaseController {
                         if(userInfos != null){
                             final String name = body.getString("name");
                             String id = request.params().get("id");
-                            //TODO : change void handle
-                            folderManager.rename(id, name, userInfos, defaultAsyncResultHandler(request));
+                            workspaceService.rename(id, name, userInfos, asyncDefaultResponseHandler(request));
                         } else {
                             unauthorized(request);
                         }
@@ -1183,8 +1151,7 @@ public class WorkspaceController extends BaseController {
                             if (body.getString("alt") != null) modifier.set("alt", body.getString("alt"));
                             if (body.getString("legend") != null) modifier.set("legend", body.getString("legend"));
 
-                            //TODO : change void handle
-                            folderManager.rename(id, name, userInfos, defaultAsyncResultHandler(request));
+                            workspaceService.rename(id, name, userInfos, asyncDefaultResponseHandler(request));
 
                         } else {
                             unauthorized(request);
@@ -1390,5 +1357,4 @@ public class WorkspaceController extends BaseController {
             }
         });
     }
-
 }

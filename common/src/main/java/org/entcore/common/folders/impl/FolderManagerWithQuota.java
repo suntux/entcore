@@ -265,15 +265,14 @@ public class FolderManagerWithQuota implements FolderManager {
 	}
 
 	@Override
-	public void addFile(Optional<String> parentId, JsonObject doc, UserInfos user,
+	public void addFile(Optional<String> parentId, JsonObject doc, String ownerId, String ownerName,
 			Handler<AsyncResult<JsonObject>> handler) {
-		this.folderManager.addFile(parentId, doc, user, handler);
+		this.folderManager.addFile(parentId, doc, ownerId, ownerName, handler);
 	}
 
 	@Override
-	public void updateFile(String id, Optional<String> parentId, JsonObject doc, UserInfos user,
-			Handler<AsyncResult<JsonObject>> handler) {
-		this.folderManager.updateFile(id, parentId, doc, user, handler);
+	public void updateFile(String id, Optional<String> parentId, JsonObject doc, Handler<AsyncResult<JsonObject>> handler) {
+		this.folderManager.updateFile(id, parentId, doc, handler);
 	}
 
 	@Override

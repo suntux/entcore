@@ -3,25 +3,25 @@ package org.entcore.workspace.service.impl;
 import com.mongodb.QueryBuilder;
 import fr.wseduc.mongodb.MongoDb;
 import fr.wseduc.mongodb.MongoQueryBuilder;
-import fr.wseduc.mongodb.MongoUpdateBuilder;
 import fr.wseduc.webutils.Either;
+import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.eventbus.Message;
-import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import org.entcore.common.bus.WorkspaceHelper;
+import org.entcore.common.folders.FolderManager;
+import org.entcore.common.folders.impl.FolderManagerWithQuota;
+import org.entcore.common.folders.QuotaService;
 import org.entcore.common.http.request.JsonHttpServerRequest;
 import org.entcore.common.mongodb.MongoDbResult;
 import org.entcore.common.notification.TimelineHelper;
+import org.entcore.common.share.ShareService;
 import org.entcore.common.storage.Storage;
 import org.entcore.common.user.UserInfos;
 import org.entcore.common.user.UserUtils;
-import org.entcore.workspace.dao.GenericDao;
-import org.entcore.workspace.service.QuotaService;
 import org.entcore.workspace.service.WorkspaceServiceI;
 import org.entcore.workspace.dao.DocumentDao;
 
@@ -32,13 +32,12 @@ import java.util.regex.Pattern;
 
 import static fr.wseduc.webutils.Utils.getOrElse;
 import static fr.wseduc.webutils.Utils.handlerToAsyncHandler;
-import static org.entcore.common.http.response.DefaultResponseHandler.arrayResponseHandler;
-import static org.entcore.common.http.response.DefaultResponseHandler.defaultResponseHandler;
 
-public class DefaultWorkspaceService extends DocumentDao implements WorkspaceServiceI {
+
+public class DefaultWorkspaceService extends FolderManagerWithQuota implements WorkspaceServiceI {
 
     private final Storage storage;
-    private QuotaService quotaService;
+    private ShareService shareService;
     public static final String DOCUMENT_REVISION_COLLECTION = "documentsRevisions";
     private static final JsonObject PROPERTIES_KEYS = new JsonObject().put("name", 1).put("alt", 1).put("legend", 1);
     private static final Logger log = LoggerFactory.getLogger(DefaultWorkspaceService.class);
@@ -46,20 +45,51 @@ public class DefaultWorkspaceService extends DocumentDao implements WorkspaceSer
     private String imageResizerAddress;
     private EventBus eb;
     private TimelineHelper notification;
+    private DocumentDao dao;
+    private MongoDb mongo;
 
-
-    //TODO: replace mongo direct calls
-
-    public DefaultWorkspaceService(Storage storage, MongoDb mongo, int threshold, String imageResizerAddress, EventBus eb) {
-        super(mongo);
+    public DefaultWorkspaceService(Storage storage, MongoDb mongo, int threshold, String imageResizerAddress, QuotaService quotaService, FolderManager folderManager, EventBus eb) {
+        super(DocumentDao.DOCUMENTS_COLLECTION, threshold, quotaService, folderManager, eb);
+        this.dao = new DocumentDao(mongo);
         this.storage = storage;
+        this.mongo = mongo;
         this.threshold = threshold;
         this.imageResizerAddress = imageResizerAddress;
         this.eb = eb;
     }
 
-    public void addDocument(final float quality, final String name, final String application, final List<String> thumbnail,
-                     final JsonObject doc, final JsonObject uploaded, final Handler<Message<JsonObject>> handler) {
+    @Override
+    public void findById(String id, Handler<JsonObject> handler) {
+        dao.findById(id, handler);
+    }
+
+    @Override
+    public void findById(String id, String onwer, Handler<JsonObject> handler) {
+        dao.findById(id, onwer, handler);
+    }
+
+    @Override
+    public void findById(String id, JsonObject keys, Handler<JsonObject> handler) {
+        dao.findById(id, keys, handler);
+    }
+
+    @Override
+    public void findById(String id, String onwer, boolean publicOnly, Handler<JsonObject> handler) {
+        dao.findById(id, onwer, publicOnly, handler);
+    }
+
+    @Override
+    public void getQuotaAndUsage(String userId, Handler<Either<String, JsonObject>> handler) {
+        this.quotaService.quotaAndUsage(userId, handler);
+    }
+
+    @Override
+    public void getShareInfos(String userId, String resourceId, String acceptLanguage, String search, Handler<Either<String, JsonObject>> handler) {
+        this.shareService.shareInfos(userId, resourceId, acceptLanguage, search, handler);
+    }
+
+    public void addDocument(final UserInfos user, final float quality, final String name, final String application, final List<String> thumbnail,
+                     final JsonObject doc, final JsonObject uploaded, final Handler<AsyncResult<JsonObject>> handler) {
         compressImage(uploaded, quality, new Handler<Integer>() {
             @Override
             public void handle(Integer size) {
@@ -67,7 +97,7 @@ public class DefaultWorkspaceService extends DocumentDao implements WorkspaceSer
                 if (size != null && meta != null) {
                     meta.put("size", size);
                 }
-                addAfterUpload(uploaded, doc, name, application, thumbnail, handler);
+                addAfterUpload(uploaded, doc, name, application, thumbnail, user.getUserId(), user.getUsername(), handler);
             }
         });
 
@@ -103,7 +133,7 @@ public class DefaultWorkspaceService extends DocumentDao implements WorkspaceSer
                                 .put("authorName", user.getUsername())
                                 .put("posted", MongoDb.formatDate(new Date()))
                                 .put("comment", comment)));
-        update(id, query, handler);
+        dao.update(id, query, handler);
     }
 
 
@@ -113,7 +143,7 @@ public class DefaultWorkspaceService extends DocumentDao implements WorkspaceSer
                         .put("comments", new JsonObject()
                                 .put("id", commentId)));
 
-        update(id, query, handler);
+        dao.update(id, query, handler);
     }
 
     private void compressImage(JsonObject srcFile, float quality, final Handler<Integer> handler) {
@@ -149,32 +179,29 @@ public class DefaultWorkspaceService extends DocumentDao implements WorkspaceSer
     }
 
     public void addAfterUpload(final JsonObject uploaded, final JsonObject doc, String name, String application,
-                                final List<String> thumbs,
-                                final Handler<Message<JsonObject>> handler) {
+                                final List<String> thumbs, final String ownerId, final String ownerName,
+                                final Handler<AsyncResult<JsonObject>> handler) {
         doc.put("name", getOrElse(name, uploaded.getJsonObject("metadata")
                 .getString("filename"), false));
         doc.put("metadata", uploaded.getJsonObject("metadata"));
         doc.put("file", uploaded.getString("_id"));
         doc.put("application", getOrElse(application, WORKSPACE_NAME)); // TODO check if application name is valid
         log.debug(doc.encodePrettily());
-        mongo.save(DocumentDao.DOCUMENTS_COLLECTION, doc, new Handler<Message<JsonObject>>() {
-            @Override
-            public void handle(final Message<JsonObject> res) {
-                if ("ok".equals(res.body().getString("status"))) {
-                    incrementStorage(doc);
-                    createRevision(res.body().getString("_id"), uploaded.getString("_id"), doc.getString("name"), doc.getString("owner"), doc.getString("owner"), doc.getString("ownerName"), doc.getJsonObject("metadata"));
-                    createThumbnailIfNeeded(DocumentDao.DOCUMENTS_COLLECTION, uploaded,
-                            res.body().getString("_id"), null, thumbs, new Handler<Message<JsonObject>>() {
-                                @Override
-                                public void handle(Message<JsonObject> event) {
-                                    if (handler != null) {
-                                        handler.handle(res);
-                                    }
+        addFile(Optional.ofNullable(doc.getString("eParent")), doc, ownerId, ownerName, res -> {
+            if(res.succeeded()){
+                incrementStorage(doc);
+                createRevision(res.result().getString("_id"), uploaded.getString("_id"), doc.getString("name"), doc.getString("owner"), doc.getString("owner"), doc.getString("ownerName"), doc.getJsonObject("metadata"));
+                createThumbnailIfNeeded(DocumentDao.DOCUMENTS_COLLECTION, uploaded,
+                        res.result().getString("_id"), null, thumbs, new Handler<Message<JsonObject>>() {
+                            @Override
+                            public void handle(Message<JsonObject> event) {
+                                if (handler != null) {
+                                    handler.handle(res);
                                 }
-                            });
-                } else if (handler != null) {
-                    handler.handle(res);
-                }
+                            }
+                        });
+            }else if (handler != null) {
+                handler.handle(res);
             }
         });
     }
@@ -562,7 +589,7 @@ public class DefaultWorkspaceService extends DocumentDao implements WorkspaceSer
                     @Override
                     public void handle(JsonObject event) {
                         if (event != null && "ok".equals(event.getString("status"))) {
-                            delete(id, new Handler<JsonObject>() {
+                            dao.delete(id, new Handler<JsonObject>() {
                                 @Override
                                 public void handle(final JsonObject result2) {
                                     if ("ok".equals(result2.getString("status"))) {
@@ -594,11 +621,6 @@ public class DefaultWorkspaceService extends DocumentDao implements WorkspaceSer
                 }
             });
         }
-    }
-
-
-    public void setQuotaService(QuotaService quotaService) {
-        this.quotaService = quotaService;
     }
 
     public void setNotification(TimelineHelper notification) {
