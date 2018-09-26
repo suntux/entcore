@@ -135,7 +135,7 @@ public interface FolderManager {
 	 * @param user    user renaming file
 	 * @param handler emit an error if rename failed
 	 */
-	void rename(String id, String newName, UserInfos user, final Handler<AsyncResult<Void>> handler);
+	void rename(String id, String newName, UserInfos user, final Handler<AsyncResult<JsonObject>> handler);
 
 	/**
 	 * 
@@ -173,6 +173,19 @@ public interface FolderManager {
 			final Handler<AsyncResult<JsonArray>> handler);
 
 	/**
+	 * copy a file without checking rights
+	 * 
+	 * @param sourceId            of the file or the folder
+	 * @param destinationFolderId the id of the destination folder or empty if the
+	 *                            destination is root
+	 * @param handler             emit the list of copied files/folders or an error
+	 *                            if the destination or the source does not exists
+	 *                            or an error occurs
+	 */
+	void copyUnsafe(String sourceId, Optional<String> destinationFolderId,
+			final Handler<AsyncResult<JsonArray>> handler);
+
+	/**
 	 * 
 	 * @param sourceIds           collection of id's file or the folder
 	 * @param destinationFolderId the id of the destination folder or empty if the
@@ -183,6 +196,20 @@ public interface FolderManager {
 	 *                            or an error occurs
 	 */
 	void copyAll(Collection<String> sourceIds, Optional<String> destinationFolderId, UserInfos user,
+			final Handler<AsyncResult<JsonArray>> handler);
+
+	/**
+	 * copy files or folders without checking rights
+	 * 
+	 * @param sourceIds           collection of id's file or the folder
+	 * @param destinationFolderId the id of the destination folder or empty if the
+	 *                            destination is root
+	 * @param user                the user doing the copy
+	 * @param handler             emit the list of copied files/folders or an error
+	 *                            if the destination or the source does not exists
+	 *                            or an error occurs
+	 */
+	void copyUnsafeAll(Collection<String> sourceIds, Optional<String> destinationFolderId,
 			final Handler<AsyncResult<JsonArray>> handler);
 
 	/**
@@ -220,22 +247,25 @@ public interface FolderManager {
 	 * 
 	 * @param id              of the file or the folder to share
 	 * @param shareOperations defining what kind of share operation to do
-	 * @param h               handler that emit the list of userid who can see files or folders
+	 * @param h               handler that emit the list of userid who can see files
+	 *                        or folders
 	 */
-	public void share(String id, ElementShareOperations shareOperations, Handler<AsyncResult<Collection<String>	>> h);
+	public void share(String id, ElementShareOperations shareOperations, Handler<AsyncResult<JsonObject>> h);
 
 	/**
 	 * 
 	 * @param ids             collection of the file or the folder IDS to share
 	 * @param shareOperations defining what kind of share operation to do
-	 * @param h               handler that emit the list of userid who can see files or folders
+	 * @param h               handler that emit the list of userid who can see files
+	 *                        or folders
 	 */
 	public void shareAll(Collection<String> ids, ElementShareOperations shareOperations,
-			Handler<AsyncResult<Collection<String>>> h);
+			Handler<AsyncResult<Collection<JsonObject>>> h);
+
 	/**
 	 * 
 	 * @param ids
 	 * @param h
 	 */
-	void markAsFavorites(Collection<String>ids,Handler<AsyncResult<Collection<JsonObject>>> h);
+	void markAsFavorites(Collection<String> ids, Handler<AsyncResult<Collection<JsonObject>>> h);
 }

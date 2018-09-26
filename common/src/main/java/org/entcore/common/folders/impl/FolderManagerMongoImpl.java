@@ -176,9 +176,9 @@ public class FolderManagerMongoImpl implements FolderManager {
 		});
 	}
 
-	public void share(String id, ElementShareOperations shareOperations, Handler<AsyncResult<Collection<String>>> hh) {
+	public void share(String id, ElementShareOperations shareOperations, Handler<AsyncResult<JsonObject>> hh) {
 		UserInfos user = shareOperations.getUser();
-		// TODO owner or shared action
+		// is owner or has shared right
 		queryHelper.findOne(queryHelper.queryBuilder().withId(id).filterByInheritShareAndOwnerWithAction(user,
 				shareOperations.getShareAction())).compose(ev -> {
 					Future<JsonObject> futureShared = Future.future();
@@ -188,14 +188,7 @@ public class FolderManagerMongoImpl implements FolderManager {
 						@Override
 						public void handle(Either<String, JsonObject> event) {
 							if (event.isRight()) {
-								// TODO save current shared?
-								updateShared(id, user, ev -> {
-									if (ev.succeeded()) {
-										futureShared.complete(e);
-									} else {
-
-									}
-								});
+								futureShared.complete(event.right().getValue());
 							} else {
 								futureShared.fail(event.left().getValue());
 							}
@@ -220,15 +213,20 @@ public class FolderManagerMongoImpl implements FolderManager {
 								handler);
 						break;
 					case SHARE_OBJECT:
-						this.shareService.share(shareOperations.getUserId(), id, shareOperations.getShare(), handler);
+						this.shareService.share(user.getUserId(), id, shareOperations.getShare(), handler);
 						break;
 					}
-				});
+					return futureShared;
+				}).compose(ev -> {
+					Future<Void> futureMergeShared = Future.future();
+					updateShared(id, user, futureMergeShared.completer());
+					return futureMergeShared.map(ev);
+				}).setHandler(hh);
 	}
 
 	@Override
 	public void shareAll(Collection<String> ids, ElementShareOperations shareOperations,
-			Handler<AsyncResult<Collection<Collection<String>>>> h) {
+			Handler<AsyncResult<Collection<JsonObject>>> h) {
 		@SuppressWarnings("rawtypes")
 		List<Future> futures = ids.stream().map(id -> {
 			Future<JsonObject> future = Future.future();
@@ -474,11 +472,13 @@ public class FolderManagerMongoImpl implements FolderManager {
 	}
 
 	@Override
-	public void rename(String id, String newName, UserInfos user, Handler<AsyncResult<Void>> handler) {
+	public void rename(String id, String newName, UserInfos user, Handler<AsyncResult<JsonObject>> handler) {
 		this.info(id, user, msg -> {
 			if (msg.succeeded()) {
+				JsonObject doc = msg.result();
+				doc.put("name", newName);// need for result
 				MongoUpdateBuilder set = new MongoUpdateBuilder().addToSet("name", newName);
-				queryHelper.update(id, set).setHandler(handler);
+				queryHelper.update(id, set).map(doc).setHandler(handler);
 			} else {
 				handler.handle(toError(msg.cause()));
 			}
@@ -735,5 +735,11 @@ public class FolderManagerMongoImpl implements FolderManager {
 	@Override
 	public void trash(String id, UserInfos user, Handler<AsyncResult<JsonArray>> handler) {
 		setDeleteFlag(id, user, handler, true);
+	}
+
+	@Override
+	public void markAsFavorites(Collection<String> ids, Handler<AsyncResult<Collection<JsonObject>>> h) {
+		// TODO Auto-generated method stub
+		// TODO should add favorite flag to query filter
 	}
 }

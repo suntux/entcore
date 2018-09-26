@@ -19,12 +19,10 @@ public class ElementShareOperations {
 	JsonObject share;
 	String shareAction;
 
-	public static ElementShareOperations addShareObject(String shareAction, UserInfos user, String userId,
-			JsonObject shareO) {
+	public static ElementShareOperations addShareObject(String shareAction, UserInfos user, JsonObject shareO) {
 		ElementShareOperations share = new ElementShareOperations();
 		share.kind = ShareOperationKind.SHARE_OBJECT;
-		share.user = user;
-		share.userId = userId;
+		share.user = user; 
 		share.share = shareO;
 		share.shareAction = shareAction;
 		return share;

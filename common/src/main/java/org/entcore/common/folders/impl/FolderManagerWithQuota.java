@@ -126,7 +126,7 @@ public class FolderManagerWithQuota implements FolderManager {
 	}
 
 	@Override
-	public void rename(String id, String newName, UserInfos user, Handler<AsyncResult<Void>> handler) {
+	public void rename(String id, String newName, UserInfos user, Handler<AsyncResult<JsonObject>> handler) {
 		// Dont need to check
 		this.folderManager.rename(id, newName, user, handler);
 	}
@@ -280,6 +280,11 @@ public class FolderManagerWithQuota implements FolderManager {
 	public void copyAll(Collection<String> sourceIds, Optional<String> destinationFolderId, UserInfos user,
 			Handler<AsyncResult<JsonArray>> handler) {
 		this.folderManager.copyAll(sourceIds, destinationFolderId, user, handler);
+	}
+
+	@Override
+	public void markAsFavorites(Collection<String> ids, Handler<AsyncResult<Collection<JsonObject>>> h) {
+		this.folderManager.markAsFavorites(ids, h);
 	}
 
 }
