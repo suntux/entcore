@@ -47,6 +47,15 @@
 				</div>
 			</div>
 
+			<div class="row" workflow="timeline.allowBetaMode">
+				<div class="twelve cell beta-picker">
+					<h2><i18n>panel.beta</i18n></h2>
+					<div class="row">
+						<button ng-if="!!beta" ng-click="clickOnBetaButton()">[[ beta === 'on' ? lang.translate('panel.beta.desactivate'): lang.translate('panel.beta.activate')]]</button>
+					</div>
+				</div>
+			</div>
+
 		</div>
 	</div>
 

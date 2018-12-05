@@ -51,6 +51,7 @@
 	    rights: {
 	        workflow: {
 	            allowLanguages: "org.entcore.timeline.controllers.TimelineController|allowLanguages",
+	            allowBetaMode: "org.entcore.timeline.controllers.TimelineController|allowBetaMode",
 	            externalNotifications: "org.entcore.timeline.controllers.TimelineController|mixinConfig",
 	            historyView: "org.entcore.timeline.controllers.TimelineController|historyView",
 	            deleteOwnNotification: "org.entcore.timeline.controllers.TimelineController|deleteNotification",

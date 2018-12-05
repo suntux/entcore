@@ -143,6 +143,31 @@ export let personalizationController = ng.controller('Personalization', ['$rootS
 		ui.setStyle(skin.path);
 	};
 
+    http().get('/userbook/preference/beta').done(function (data) {
+        var oldCookieValue = getCookie('beta');
+
+        try {
+            $scope.beta = JSON.parse(data.preference).mode;
+            setCookie('beta', 'on', 15);
+        } catch (e) {
+            $scope.beta = 'off';
+            setCookie('beta', 'off', 365);
+        }
+
+        if ($scope.beta === 'on') {
+            setCookie('beta', 'on', 15);
+        } else {
+            setCookie('beta', 'off', 365);
+        }
+
+        if ($scope.beta === 'on' && oldCookieValue != 'on') {
+            location.reload();
+        }
+        if ($scope.beta === 'off' && oldCookieValue == 'on') {
+            location.reload();
+        }
+    });
+
 	http().get('/languages').done(function(data){
 		$scope.languages = data;
     }.bind(this))
@@ -165,6 +190,19 @@ export let personalizationController = ng.controller('Personalization', ['$rootS
 		http().putJson('/userbook/preference/language', { 'default-domain': language}).done(function(){
 			location.reload();
 		})
+	};
+
+	$scope.clickOnBetaButton = function() {
+		if($scope.beta === 'off') {
+            http().putJson('/userbook/preference/beta', {'mode': 'on'}).done(function() {
+                location.reload();
+            });
+		} else {
+            http().putJson('/userbook/preference/beta', {'mode': 'off'}).done(function() {
+                location.reload();
+            });
+		}
+
 	};
 
 	$scope.togglePanel = function($event){
@@ -206,3 +244,27 @@ export let flashMessagesController = ng.controller('FlashMessages', ['$scope', '
         })
     }
 }]);
+
+function getCookie(name) {
+    var nameEQ = name + "=";
+    var ca = document.cookie.split(';');
+    for(var i=0;i < ca.length;i++) {
+        var c = ca[i];
+        while (c.charAt(0)==' ') c = c.substring(1,c.length);
+        if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length,c.length);
+    }
+    return null;
+}
+
+function setCookie(name,value,days) {
+    var expires = "";
+    if (days) {
+        var date = new Date();
+        date.setTime(date.getTime() + (days*24*60*60*1000));
+        expires = "; expires=" + date.toUTCString();
+    }
+    document.cookie = name + "=" + (value || "")  + expires + "; path=/";
+}
+function eraseCookie(name) {
+    document.cookie = name+'=; Max-Age=-99999999;';
+}
