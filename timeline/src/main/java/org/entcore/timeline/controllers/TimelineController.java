@@ -363,6 +363,13 @@ public class TimelineController extends BaseController {
 		return;
 	}
 
+	@Get("/allowBetaMode")
+	@SecuredAction("timeline.allowBetaMode")
+	public void allowBetaMode(final HttpServerRequest request) {
+		// This route is used to create allowBetaMode Workflow right, nothing to do
+		return;
+	}
+
 	@Delete("/:id")
 	@SecuredAction("timeline.delete.own.notification")
 	public void deleteNotification(final HttpServerRequest request) {
