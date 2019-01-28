@@ -1,13 +1,16 @@
 package org.entcore.workspace.controllers;
 
 import static fr.wseduc.webutils.Utils.getOrElse;
+import static fr.wseduc.webutils.Utils.isNotEmpty;
 import static fr.wseduc.webutils.request.RequestUtils.bodyToJson;
 import static org.entcore.common.http.response.DefaultResponseHandler.arrayResponseHandler;
 import static org.entcore.common.http.response.DefaultResponseHandler.asyncArrayResponseHandler;
 import static org.entcore.common.http.response.DefaultResponseHandler.asyncDefaultResponseHandler;
 import static org.entcore.common.http.response.DefaultResponseHandler.defaultResponseHandler;
 import static org.entcore.common.user.UserUtils.getUserInfos;
+import static org.entcore.common.utils.FileUtils.deleteImportPath;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -18,6 +21,9 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import fr.wseduc.webutils.DefaultAsyncResult;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.http.HttpServerFileUpload;
 import org.entcore.common.events.EventStore;
 import org.entcore.common.events.EventStoreFactory;
 import org.entcore.common.folders.ElementQuery;
@@ -29,6 +35,7 @@ import org.entcore.common.http.request.ActionsUtils;
 import org.entcore.common.notification.TimelineHelper;
 import org.entcore.common.share.impl.GenericShareService;
 import org.entcore.common.storage.Storage;
+import org.entcore.common.user.DefaultFunctions;
 import org.entcore.common.user.UserInfos;
 import org.entcore.common.user.UserUtils;
 import org.entcore.common.utils.StringUtils;
@@ -75,6 +82,24 @@ public class WorkspaceController extends BaseController {
 		this.storage = storage;
 		this.workspaceService = workspaceService;
 		this.shareService = shareService;
+	}
+
+	@Get("/video")
+	public void video(HttpServerRequest request) {
+		renderView(request);
+	}
+
+	@Post("/videoupload")
+	public void videoUpload(HttpServerRequest request) {
+		request.setExpectMultipart(true);
+		request.exceptionHandler(event -> {
+			log.error("error ", event);
+		});
+		request.uploadHandler(upload -> {
+			final String filename = "/tmp/video/" + File.separator + upload.filename();
+			upload.endHandler(event -> log.info("File " + upload.filename() + " uploaded."));
+			upload.streamToFileSystem(filename);
+		});
 	}
 
 	@Post("/document")

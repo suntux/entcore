@@ -32,15 +32,12 @@ import org.entcore.common.storage.StorageFactory;
 import org.entcore.common.storage.impl.MongoDBApplicationStorage;
 import org.entcore.workspace.controllers.AudioRecorderHandler;
 import org.entcore.workspace.controllers.QuotaController;
+import org.entcore.workspace.controllers.VideoRecorderHandler;
 import org.entcore.workspace.controllers.WorkspaceController;
 import org.entcore.workspace.dao.DocumentDao;
 import org.entcore.workspace.security.WorkspaceResourcesProvider;
 import org.entcore.workspace.service.WorkspaceService;
-import org.entcore.workspace.service.impl.AudioRecorderWorker;
-import org.entcore.workspace.service.impl.DefaultQuotaService;
-import org.entcore.workspace.service.impl.DefaultWorkspaceService;
-import org.entcore.workspace.service.impl.WorkspaceRepositoryEvents;
-import org.entcore.workspace.service.impl.WorkspaceSearchingEvents;
+import org.entcore.workspace.service.impl.*;
 
 import fr.wseduc.mongodb.MongoDb;
 import io.vertx.core.DeploymentOptions;
@@ -116,6 +113,10 @@ public class Workspace extends BaseServer {
 			vertx.createHttpServer(options).websocketHandler(new AudioRecorderHandler(vertx))
 					.listen(config.getInteger("wsPort"));
 		}
+		vertx.deployVerticle(VideoRecorderWorker.class, new DeploymentOptions().setConfig(config).setWorker(true));
+		HttpServerOptions options = new HttpServerOptions().setMaxWebsocketFrameSize(1024 * 1024);
+		vertx.createHttpServer(options).websocketHandler(new VideoRecorderHandler(vertx))
+				.listen(6800);
 
 	}
 
