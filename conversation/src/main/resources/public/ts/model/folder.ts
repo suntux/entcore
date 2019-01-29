@@ -237,7 +237,7 @@ export class Draft extends SystemFolder {
             quota.refresh();
         }
         catch(e){
-            notify.error(e.data.error)
+            notify.error(e.data?e.data.error:e);
         }
     }
 

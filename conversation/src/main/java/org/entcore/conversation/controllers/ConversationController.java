@@ -30,6 +30,7 @@ import fr.wseduc.webutils.http.BaseController;
 import fr.wseduc.webutils.request.RequestUtils;
 
 import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
 import io.vertx.core.file.FileSystem;
 import io.vertx.core.http.HttpServerResponse;
 import org.entcore.common.events.EventStore;
@@ -1460,25 +1461,17 @@ public class ConversationController extends BaseController {
 									forbidden(request, "forward.failed.quota");
 									return;
 								}
-
-								//4 - forward attachments, add relationships between the message and the already existing attachments
-								conversationService.forwardAttachments(forwardedId, messageId, user, new Handler<Either<String,JsonObject>>() {
-									@Override
-									public void handle(Either<String, JsonObject> event) {
-										if(event.isLeft()){
-											badRequest(request, event.left().getValue());
-											return;
-										}
-
+								//4 - forward message by creating new thread and keep only last message + forward attachments
+								conversationService.forward(forwardedId, neoResult, messageId, user, result->{
+									if(result.isRight()) {
 										//5 - update user quota
-										updateUserQuota(user.getUserId(), finalAttachmentsSize, new Handler<Void>(){
-											@Override
-											public void handle(Void event) {
-												ok(request);
-											}
+										updateUserQuota(user.getUserId(), finalAttachmentsSize, eventQuota->{
+											//response with message modified
+											ok(request);
 										});
+									}else {
+										badRequest(request,result.left().getValue());
 									}
-
 								});
 							}
 						});
