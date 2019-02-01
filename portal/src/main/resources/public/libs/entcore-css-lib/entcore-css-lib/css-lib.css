@@ -3864,10 +3864,10 @@ help section.lightbox > div.content {
       overflow: hidden; }
   .icons-view explorer img, .icons-view explorer i, .icons-view .element img, .icons-view .element i {
     float: none !important;
-    margin-left: auto;
-    margin-right: auto;
+    margin: auto;
     cursor: pointer;
-    max-width: 100%; }
+    max-width: 100%;
+  }
   .icons-view explorer legend, .icons-view .element legend {
     float: left;
     width: 100%;
