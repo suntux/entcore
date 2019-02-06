@@ -45,13 +45,13 @@ export interface Assignment {
                         [preview]="true"></multi-select>
             </div>
             <div class="form__row form__row--last">
-                <button type="button" class="lct-assign-button submit" [disabled]="!assignmentForm.valid"
-                        (click)="displayedLightbox = 'assignment'">
-                    {{ 'services.mass-assignment.assign-button' | translate }}
-                </button>
                 <button type="button" class="lct-unassign-button submit" [disabled]="!assignmentForm.valid"
                         (click)="displayedLightbox = 'unassignment'">
                     {{ 'services.mass-assignment.unassign-button' | translate }}
+                </button>
+                <button type="button" class="lct-assign-button submit" [disabled]="!assignmentForm.valid"
+                        (click)="displayedLightbox = 'assignment'">
+                    {{ 'services.mass-assignment.assign-button' | translate }}
                 </button>
             </div>
         </form>
@@ -85,15 +85,15 @@ export interface Assignment {
         .submit {
             background-color: #ff8352;
             color: white;
+            min-width: 80px;
+            text-align: center;
         }`, `
-        .submit[disabled] {
+        .submit[disabled], .submit[disabled]:hover {
+            background-color: #f2f2f2;
             color: grey;
         }`, `
         .submit:hover {
             background-color: #ff5e1f;
-        }`, `
-        .submit:hover[disabled] {
-            background-color: #ff8352;
         }`, `
         select {
             display: inline-block;
