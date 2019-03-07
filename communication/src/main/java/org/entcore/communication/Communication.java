@@ -19,16 +19,38 @@
 
 package org.entcore.communication;
 
+import io.vertx.core.json.JsonObject;
+import io.vertx.ext.asyncsql.PostgreSQLClient;
+import io.vertx.ext.sql.SQLClient;
 import org.entcore.common.http.BaseServer;
 import org.entcore.communication.controllers.CommunicationController;
 import org.entcore.communication.filters.CommunicationFilter;
+import org.entcore.communication.services.CommunicationService;
+import org.entcore.communication.services.impl.DefaultCommunicationService;
+import org.entcore.communication.services.impl.SqlCommunicationService;
+import org.entcore.communication.utils.SqlAsync;
 
 public class Communication extends BaseServer {
 
 	@Override
 	public void start() throws Exception {
 		super.start();
-		addController(new CommunicationController());
+
+		// TODO move this conf to load in server map from starter
+		final JsonObject postgresConf = config.getJsonObject("postgres-conf");
+
+
+		CommunicationController communicationController = new CommunicationController();
+		CommunicationService communicationService;
+		if (postgresConf != null && !postgresConf.isEmpty()) {
+			SQLClient postgresSQLClient = PostgreSQLClient.createShared(vertx, postgresConf);
+			SqlAsync.getInstance().init(postgresSQLClient);
+			communicationService = new SqlCommunicationService();
+		} else {
+			communicationService = new DefaultCommunicationService();
+		}
+		communicationController.setCommunicationService(communicationService);
+		addController(communicationController);
 		setDefaultResourceFilter(new CommunicationFilter());
 	}
 

@@ -188,6 +188,8 @@ project(':communication') {
     compile project(':common')
     compile "fr.wseduc:web-utils:$webUtilsVersion"
     compile "fr.wseduc:mongodb-helper:$mongodbHelperVersion"
+    compile "io.vertx:vertx-mysql-postgresql-client:$vertxVersion"
+    compile "org.slf4j:slf4j-api:1.7.21"
   }
 }
 
