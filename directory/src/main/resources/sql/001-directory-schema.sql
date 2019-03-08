@@ -47,11 +47,21 @@ CREATE TABLE directory.groups (
 	"type_id" SMALLINT NOT NULL REFERENCES directory.groups_types (id) ON DELETE RESTRICT
 );
 
+CREATE TABLE directory.profiles (
+	"id" SMALLINT NOT NULL PRIMARY KEY,
+	"profile" VARCHAR(16) NOT NULL
+);
+
+INSERT INTO directory.profiles VALUES (1, 'Personnel'), (2, 'Teacher'), (3, 'Student'), (4, 'Relative'), (5, 'Guest'), (6, 'Tech');
+
 CREATE TABLE directory.users (
 	"id" VARCHAR(36) NOT NULL PRIMARY KEY,
 	"external_id" VARCHAR(64) NOT NULL,
 	"display_name" VARCHAR(255) NOT NULL,
 	"display_name_search_field" TSVECTOR,
+	"blocked" BOOLEAN,
+--	"profile" SMALLINT NOT NULL REFERENCES directory.profiles (id) ON DELETE RESTRICT,
+	"profile" VARCHAR(16) NOT NULL,
 	"created" TIMESTAMPTZ DEFAULT NOW(),
 	"modified" TIMESTAMPTZ DEFAULT NOW(),
 	"checksum" BIGINT
@@ -63,6 +73,11 @@ CREATE TABLE directory.groups_users (
 	PRIMARY KEY (group_id, user_id)
 );
 
+CREATE TABLE directory.students_relatives (
+	"student_id" VARCHAR(36) NOT NULL REFERENCES directory.users (id) ON DELETE CASCADE,
+	"relative_id" VARCHAR(36) NOT NULL REFERENCES directory.users (id) ON DELETE CASCADE,
+	PRIMARY KEY (student_id, relative_id)
+);
 
 CREATE SCHEMA history;
 

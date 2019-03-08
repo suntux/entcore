@@ -25,11 +25,13 @@ package org.entcore.communication.utils;
 import fr.wseduc.webutils.DefaultAsyncResult;
 import fr.wseduc.webutils.Either;
 import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import io.vertx.ext.sql.ResultSet;
 import io.vertx.ext.sql.SQLClient;
 import io.vertx.ext.sql.SQLConnection;
 import io.vertx.ext.sql.SQLRowStream;
@@ -107,6 +109,58 @@ public class SqlAsync {
 				handler.handle(new DefaultAsyncResult<>(ar.cause()));
 			}
 		});
+	}
+
+	public void query(String query, Handler<AsyncResult<ResultSet>> handler) {
+		sqlClient.getConnection(ar -> {
+			if (ar.succeeded()) {
+				final SQLConnection conn = ar.result();
+				conn.query(query, ar2 -> {
+					conn.close();
+					handler.handle(ar2);
+				});
+			} else {
+				handler.handle(new DefaultAsyncResult<>(ar.cause()));
+			}
+		});
+	}
+
+	public Future<ResultSet> query(String query) {
+		final Future<ResultSet> future = Future.future();
+		query(query, ar -> {
+			if (ar.succeeded()) {
+				future.complete(ar.result());
+			} else {
+				future.fail(ar.cause());
+			}
+		});
+		return future;
+	}
+
+	public void query(String query, JsonArray params, Handler<AsyncResult<ResultSet>> handler) {
+		sqlClient.getConnection(ar -> {
+			if (ar.succeeded()) {
+				final SQLConnection conn = ar.result();
+				conn.queryWithParams(query, params, ar2 -> {
+					conn.close();
+					handler.handle(ar2);
+				});
+			} else {
+				handler.handle(new DefaultAsyncResult<>(ar.cause()));
+			}
+		});
+	}
+
+	public Future<ResultSet> query(String query, JsonArray params) {
+		final Future<ResultSet> future = Future.future();
+		query(query, params, ar -> {
+			if (ar.succeeded()) {
+				future.complete(ar.result());
+			} else {
+				future.fail(ar.cause());
+			}
+		});
+		return future;
 	}
 
 	public SQLClient getSqlClient() {
