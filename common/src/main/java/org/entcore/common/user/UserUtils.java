@@ -32,6 +32,7 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
 import java.io.IOException;
+import java.util.Optional;
 
 import static fr.wseduc.webutils.Utils.getOrElse;
 import static fr.wseduc.webutils.Utils.handlerToAsyncHandler;
@@ -254,7 +255,7 @@ public class UserUtils {
 					Object gt = j.remove("groupType");
 					Object gp = j.remove("groupProfile");
 					if (gt instanceof Iterable) {
-						for (Object gti: (Iterable) gt) {
+						for (Object gti : (Iterable) gt) {
 							if (gti != null && !"Group".equals(gti) && gti.toString().endsWith("Group")) {
 								j.put("groupType", gti);
 								if ("ProfileGroup".equals(gti)) {
@@ -262,6 +263,20 @@ public class UserUtils {
 								}
 								break;
 							}
+						}
+					} else if (gt instanceof Short) {
+						Optional<GroupType> groupType = GroupType.valueOf(((Short) gt).intValue());
+						if (groupType.isPresent()) {
+							final String gts = groupType.get().name();
+							j.put("groupType", gts);
+							if ("ProfileGroup".equals(gts)) {
+								j.put("profile", gp);
+							}
+						}
+					} else if (gt instanceof String) {
+						j.put("groupType", gt);
+						if ("ProfileGroup".equals(gt)) {
+							j.put("profile", gp);
 						}
 					}
 				}

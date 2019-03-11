@@ -36,6 +36,7 @@ import org.entcore.communication.utils.SqlAsync;
 import org.entcore.communication.utils.SqlStreamToBatch;
 
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -176,47 +177,46 @@ public class SqlCommunicationService implements CommunicationService {
 	public void visibleUsers(String userId, String structureId, JsonArray expectedTypes, boolean itSelf, boolean myGroup,
 			boolean profile, String preFilter, String customReturn, JsonObject additionnalParams,
 			String userProfile, Handler<Either<String, JsonArray>> handler) {
-		final String queryUsers =
-				"SELECT u.id, u.display_name as \"displayName\", u.profile " +
-				"FROM communication.communications c " +
-				"JOIN directory.groups g ON c.dest_group_id = g.id " +
-				"JOIN directory.groups_users gu ON g.id = gu.group_id " +
-				"JOIN directory.users u ON gu.user_id = u.id " +
-				"WHERE c.user_id = ? AND g.communique_user IN ('B','O') " +
-				"UNION " +
-				"SELECT u.id, u.display_name as \"displayName\", u.profile " +
-				"FROM communication.communications c " +
-				"JOIN directory.users u ON c.dest_user_id = u.id " +
-				"WHERE c.user_id = ? ";
-		final Future<ResultSet> fu = sqlAsync.query(queryUsers, new JsonArray().add(userId).add(userId));
-		final String queryGroups =
-				"SELECT g.id, g.name " +
-				"FROM communication.communications c " +
-				"JOIN directory.groups g ON c.dest_group_id = g.id " +
-				"WHERE c.user_id = ? ";
-		final Future<ResultSet> fg = sqlAsync.query(queryGroups, new JsonArray().add(userId));
-		CompositeFuture.all(fu, fg).setHandler(ar -> {
+		List<Future> futures = new ArrayList<>();
+		if (expectedTypes == null || expectedTypes.isEmpty() || expectedTypes.contains("User")) {
+			final String queryUsers =
+					"SELECT u.id, u.display_name as \"displayName\", u.profile " +
+					"FROM communication.communications c " +
+					"JOIN directory.groups g ON c.dest_group_id = g.id " +
+					"JOIN directory.groups_users gu ON g.id = gu.group_id " +
+					"JOIN directory.users u ON gu.user_id = u.id " +
+					"WHERE c.user_id = ? AND g.communique_user IN ('B','O') " +
+					"UNION " +
+					"SELECT u.id, u.display_name as \"displayName\", u.profile " +
+					"FROM communication.communications c " +
+					"JOIN directory.users u ON c.dest_user_id = u.id " +
+					"WHERE c.user_id = ? ";
+			futures.add(sqlAsync.query(queryUsers, new JsonArray().add(userId).add(userId)));
+		}
+		if (expectedTypes == null || expectedTypes.isEmpty() || expectedTypes.contains("Group")) {
+			final String queryGroups =
+					"SELECT g.id, g.name, g.nb_users as \"nbUsers\", g.type_id as \"groupType\", g.filter as \"groupProfile\" " +
+					"FROM communication.communications c " +
+					"JOIN directory.groups g ON c.dest_group_id = g.id " +
+					"WHERE c.user_id = ? " +
+					"UNION " +
+					"SELECT g.id, g.name, g.nb_users as \"nbUsers\", g.type_id as \"groupType\", g.filter as \"groupProfile\" " +
+					"FROM communication.communications c " +
+					"JOIN directory.groups g ON c.dest_group_id = g.parent_group_id " +
+					"WHERE c.user_id = ? ";
+			futures.add(sqlAsync.query(queryGroups, new JsonArray().add(userId).add(userId)));
+		}
+		CompositeFuture.all(futures).setHandler(ar -> {
 			if (ar.succeeded()) {
 				final List<JsonObject> results = ar.result().<ResultSet>list().stream()
 						.flatMap(r -> r.getRows().stream())
 						.collect(Collectors.toList());
 				handler.handle(new Either.Right<>(new JsonArray(results)));
-//				final List<ResultSet> results = ar.result().list();
-//				if (results.size() == 2) {
-//					final JsonObject r = new JsonObject();
-//							.put("groups", new JsonArray(results.get(1).getRows()))
-//							.put("users", new JsonArray(results.get(0).getRows()));
-//					handler.handle(new Either.Right<>(r));
-//				} else {
-//					handler.handle(new Either.Left<>("get.com.result.error"));
-//				}
 			} else {
 				log.error("Get communications rules error", ar.cause());
 				handler.handle(new Either.Left<>("get.com.error"));
 			}
 		});
-		//Future<List<ResultSet>> results = CompositeFuture.all(fu, fg).map(CompositeFuture::list);
-
 	}
 
 	@Override

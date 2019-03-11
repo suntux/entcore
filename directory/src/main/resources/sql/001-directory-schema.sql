@@ -26,7 +26,7 @@ CREATE TABLE directory.groups_types (
 	"type" VARCHAR(16) NOT NULL
 );
 
-INSERT INTO directory.groups_types VALUES (1, 'Profile'), (2, 'Functional'), (3, 'Function'), (4, 'HeadTeacher'), (5, 'Manual'), (6, 'Community'), (7, 'Delete'), (8, 'Remote');
+INSERT INTO directory.groups_types VALUES (1, 'ProfileGroup'), (2, 'FunctionalGroup'), (3, 'FunctionGroup'), (4, 'HTGroup'), (5, 'ManualGroup'), (6, 'CommunityGroup'), (7, 'DeleteGroup'), (8, 'RemoteGroup');
 
 CREATE TABLE directory.groups (
 	"id" VARCHAR(36) NOT NULL PRIMARY KEY,
