@@ -1,0 +1,15 @@
+{ "name" : "org.entcore.communication.controllers.CommunicationController|visibleUsers", "displayName" : "communication.visible.user", "type" : "WORKFLOW"}
+{ "name" : "org.entcore.communication.controllers.CommunicationController|visibleGroupContains", "displayName" : "", "type" : "AUTHENTICATED"}
+{ "name" : "org.entcore.communication.controllers.CommunicationController|searchVisible", "displayName" : "", "type" : "AUTHENTICATED"}
+{ "name" : "org.entcore.communication.controllers.CommunicationController|removeLinksWithUsers", "displayName" : "", "type" : "RESOURCE"}
+{ "name" : "org.entcore.communication.controllers.CommunicationController|removeLinkBetweenRelativeAndStudent", "displayName" : "", "type" : "RESOURCE"}
+{ "name" : "org.entcore.communication.controllers.CommunicationController|removeLink", "displayName" : "", "type" : "RESOURCE"}
+{ "name" : "org.entcore.communication.controllers.CommunicationController|removeCommunicationRules", "displayName" : "communication.remove.rules", "type" : "WORKFLOW"}
+{ "name" : "org.entcore.communication.controllers.CommunicationController|initDefaultCommunicationRules", "displayName" : "communication.init.default.rules", "type" : "WORKFLOW"}
+{ "name" : "org.entcore.communication.controllers.CommunicationController|getDefaultCommunicationRules", "displayName" : "", "type" : "RESOURCE"}
+{ "name" : "org.entcore.communication.controllers.CommunicationController|defaultCommunicationRules", "displayName" : "communication.default.rules", "type" : "WORKFLOW"}
+{ "name" : "org.entcore.communication.controllers.CommunicationController|communiqueWith", "displayName" : "", "type" : "RESOURCE"}
+{ "name" : "org.entcore.communication.controllers.CommunicationController|adminConsole", "displayName" : "", "type" : "RESOURCE"}
+{ "name" : "org.entcore.communication.controllers.CommunicationController|addLinksWithUsers", "displayName" : "", "type" : "RESOURCE"}
+{ "name" : "org.entcore.communication.controllers.CommunicationController|addLinkBetweenRelativeAndStudent", "displayName" : "", "type" : "RESOURCE"}
+{ "name" : "org.entcore.communication.controllers.CommunicationController|addLink", "displayName" : "", "type" : "RESOURCE"}
