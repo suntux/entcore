@@ -31,6 +31,7 @@ public class TestCommunicationVerticle extends Communication {
 		super.start();
 		clearFilters();
 		addFilter(new TestFilter(config.getJsonObject("test-session", new JsonObject())));
+		initModulesHelpers("");
 	}
 
 }

@@ -26,7 +26,11 @@ import fr.wseduc.webutils.request.filter.Filter;
 import fr.wseduc.webutils.security.SecureHttpServerRequest;
 import io.vertx.core.Handler;
 import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import org.entcore.common.neo4j.Neo4j;
+
+import static fr.wseduc.webutils.Utils.isNotEmpty;
 
 public class TestFilter implements Filter {
 
@@ -39,9 +43,29 @@ public class TestFilter implements Filter {
 	@Override
 	public void canAccess(HttpServerRequest request, Handler<Boolean> handler) {
 		if (request instanceof SecureHttpServerRequest) {
-			((SecureHttpServerRequest) request).setSession(testSession);
+			String testLogin = request.getHeader("Test-Login");
+			if (isNotEmpty(testLogin)) {
+				String queryFakeSession =
+						"MATCH (u:User {login : {login}}) " +
+						"RETURN u.id as userId, u.login as login, u.lastName as lastName, " +
+						"u.firstName as firstName, u.externalId as externalId, u.displayName as username, " +
+						"HEAD(u.profiles) as type";
+				request.pause();
+				Neo4j.getInstance().execute(queryFakeSession, new JsonObject().put("login", testLogin), m -> {
+					final JsonArray res = m.body().getJsonArray("result");
+					if ("ok".equals(m.body().getString("status")) && res != null && res.size() == 1) {
+						((SecureHttpServerRequest) request).setSession(res.getJsonObject(0));
+					}
+					request.resume();
+					handler.handle(true);
+				});
+			} else {
+				((SecureHttpServerRequest) request).setSession(testSession);
+				handler.handle(true);
+			}
+		} else {
+			handler.handle(true);
 		}
-		handler.handle(true);
 	}
 
 	@Override

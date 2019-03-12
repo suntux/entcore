@@ -58,6 +58,7 @@ public class CommunicationReadTest {
 
 		DeploymentOptions options = new DeploymentOptions()
 				.setConfig(new JsonObject().put("port", port).put("path-prefix", "communication")
+						.put("neo4jConfig", new JsonObject().put("server-uri", "http://localhost:7474/db/data/"))
 						.put("test-session", new JsonObject().put("userId", "91c22b66-ba1b-4fde-a3fe-95219cc18d4a"))
 						.put("postgres-conf", new JsonObject()
 								.put("host", "localhost")
@@ -107,6 +108,20 @@ public class CommunicationReadTest {
 				.statusCode(200)
 				.body("groups.size()", is(233))
 				.body("users.size()", is(0));
+	}
+
+	@Test
+	public void checkComRulesRestAssuredLoginHeader() {
+		given()
+				.header("Test-Login", "severine.alexandre")
+				.body("{\"search\":\"\",\"types\":[],\"structures\":[],\"classes\":[],\"profiles\":[],\"functions\":[],\"nbUsersInGroups\":true,\"groupType\":true}")
+				.when()
+				.post("/communication/visible")
+				.then()
+				.contentType(ContentType.JSON)
+				.statusCode(200)
+				.body("groups.size()", is(234))
+				.body("users.size()", is(3279));
 	}
 
 }
