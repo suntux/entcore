@@ -191,6 +191,7 @@ project(':communication') {
     compile "io.vertx:vertx-mysql-postgresql-client:$vertxVersion"
     compile "org.slf4j:slf4j-api:1.7.21"
     testCompile "io.vertx:vertx-unit:$vertxVersion"
+    testCompile "io.rest-assured:rest-assured:$restAssuredVersion"
   }
 }
 

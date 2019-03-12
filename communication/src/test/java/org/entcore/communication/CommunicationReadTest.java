@@ -22,6 +22,8 @@
 
 package org.entcore.communication;
 
+import io.restassured.RestAssured;
+import io.restassured.http.ContentType;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
@@ -35,6 +37,10 @@ import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.net.ServerSocket;
+
+import static io.restassured.RestAssured.*;
+import static io.restassured.matcher.RestAssuredMatchers.*;
+import static org.hamcrest.Matchers.*;
 
 @RunWith(VertxUnitRunner.class)
 public class CommunicationReadTest {
@@ -62,10 +68,14 @@ public class CommunicationReadTest {
 				));
 
 		vertx.deployVerticle(TestCommunicationVerticle.class.getName(), options, context.asyncAssertSuccess());
+
+		RestAssured.baseURI = "http://localhost";
+		RestAssured.port = port;
 	}
 
 	@After
 	public void tearDown(TestContext context) {
+		RestAssured.reset();
 		vertx.close(context.asyncAssertSuccess());
 	}
 
@@ -84,6 +94,19 @@ public class CommunicationReadTest {
 					});
 				})
 				.end("{\"search\":\"\",\"types\":[\"Group\"],\"structures\":[],\"classes\":[],\"profiles\":[],\"functions\":[],\"nbUsersInGroups\":true,\"groupType\":true}");
+	}
+
+	@Test
+	public void checkComRulesRestAssured() {
+		given()
+				.body("{\"search\":\"\",\"types\":[\"Group\"],\"structures\":[],\"classes\":[],\"profiles\":[],\"functions\":[],\"nbUsersInGroups\":true,\"groupType\":true}")
+		.when()
+				.post("/communication/visible")
+		.then()
+				.contentType(ContentType.JSON)
+				.statusCode(200)
+				.body("groups.size()", is(233))
+				.body("users.size()", is(0));
 	}
 
 }
