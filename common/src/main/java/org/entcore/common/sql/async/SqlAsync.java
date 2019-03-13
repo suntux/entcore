@@ -20,7 +20,7 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  */
 
-package org.entcore.communication.utils;
+package org.entcore.common.sql.async;
 
 import fr.wseduc.webutils.DefaultAsyncResult;
 import fr.wseduc.webutils.Either;
@@ -31,14 +31,15 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import io.vertx.ext.sql.ResultSet;
-import io.vertx.ext.sql.SQLClient;
-import io.vertx.ext.sql.SQLConnection;
-import io.vertx.ext.sql.SQLRowStream;
+import io.vertx.ext.sql.*;
+import org.entcore.common.validation.ValidationException;
 
+import java.util.Map;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
-// TODO move in commons
+import static fr.wseduc.webutils.Utils.isEmpty;
+
 public class SqlAsync {
 
 	private SQLClient sqlClient;
@@ -161,6 +162,44 @@ public class SqlAsync {
 			}
 		});
 		return future;
+	}
+
+	public void insert(String table, JsonObject object, String returning, Handler<AsyncResult<ResultSet>> handler) {
+		if (isEmpty(table) || object == null || object.isEmpty()) {
+			handler.handle(new DefaultAsyncResult<>(new ValidationException("empty.fields")));
+			return;
+		}
+		final JsonArray params = new JsonArray(object.stream().map(Map.Entry::getValue).collect(Collectors.toList()));
+		final StringBuilder sb = new StringBuilder("INSERT INTO ")
+				.append(table)
+				.append(" (");
+		for (Object o : object.fieldNames()) {
+			if (!(o instanceof String)) continue;
+			sb.append(escapeField((String) o)).append(",");
+		}
+		sb.deleteCharAt(sb.length()-1);
+		sb.append(") VALUES (");
+		for (int i = 0; i < params.size(); i++) {
+			sb.append("?,");
+		}
+		sb.deleteCharAt(sb.length()-1);
+		sb.append(")");
+		if (returning != null) {
+			sb.append(" RETURNING ").append(returning);
+		}
+		sqlClient.queryWithParams(sb.toString(), params, handler);
+	}
+
+	private String escapeField(String str) {
+		return "\"" + str.replace("\"", "\"\"") + "\"";
+	}
+
+	public void updateWithParams(String sql, JsonArray params, Handler<AsyncResult<UpdateResult>> handler) {
+		sqlClient.updateWithParams(sql, params, handler);
+	}
+
+	public void queryWithParams(String sql, JsonArray arguments, Handler<AsyncResult<ResultSet>> handler) {
+		sqlClient.queryWithParams(sql, arguments, handler);
 	}
 
 	public SQLClient getSqlClient() {

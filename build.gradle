@@ -152,6 +152,7 @@ project(':common') {
     compile "fr.wseduc:mongodb-helper:$mongodbHelperVersion"
     compile "fr.wseduc:vertx-swift-client:$vertxSwiftClientVersion"
     compile "joda-time:joda-time:$jodaTimeVersion"
+    compileOnly "io.vertx:vertx-mysql-postgresql-client:$vertxVersion"
   }
 }
 
@@ -178,7 +179,7 @@ project(':auth') {
     compile "fr.wseduc:mongodb-helper:$mongodbHelperVersion"
     compile "jp.eisbahn:oauth2-server:1.2.0"
     compile "org.opensaml:opensaml:2.6.4"
-    compile "org.slf4j:slf4j-api:1.7.12"
+    compile "org.slf4j:slf4j-api:$slf4jVerion"
     compile "joda-time:joda-time:$jodaTimeVersion"
   }
 }
@@ -189,9 +190,9 @@ project(':communication') {
     compile "fr.wseduc:web-utils:$webUtilsVersion"
     compile "fr.wseduc:mongodb-helper:$mongodbHelperVersion"
     compile "io.vertx:vertx-mysql-postgresql-client:$vertxVersion"
-    compile "org.slf4j:slf4j-api:1.7.21"
+    compile "org.slf4j:slf4j-api:$slf4jVerion"
+    testCompile project(':common-tests')
     testCompile "io.vertx:vertx-unit:$vertxVersion"
-    testCompile "io.rest-assured:rest-assured:$restAssuredVersion"
   }
 }
 
@@ -201,6 +202,10 @@ project(':directory') {
     compile "fr.wseduc:web-utils:$webUtilsVersion"
     compile "fr.wseduc:mongodb-helper:$mongodbHelperVersion"
     compile "joda-time:joda-time:$jodaTimeVersion"
+    compile "io.vertx:vertx-mysql-postgresql-client:$vertxVersion"
+    compile "org.slf4j:slf4j-api:$slf4jVerion"
+    testCompile project(':common-tests')
+    testCompile "io.vertx:vertx-unit:$vertxVersion"
   }
 }
 
@@ -277,6 +282,13 @@ project(':session') {
   }
 }
 
+project(':common-tests') {
+  dependencies {
+    compile project(':common')
+    compile "io.vertx:vertx-unit:$vertxVersion"
+    compile "io.rest-assured:rest-assured:$restAssuredVersion"
+  }
+}
 
 project(':tests') {
   apply plugin: 'scala'

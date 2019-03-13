@@ -33,6 +33,8 @@ import fr.wseduc.webutils.security.SecureHttpServerRequest;
 import fr.wseduc.webutils.validation.JsonSchemaValidator;
 
 import io.vertx.core.shareddata.LocalMap;
+import io.vertx.ext.asyncsql.PostgreSQLClient;
+import io.vertx.ext.sql.SQLClient;
 import org.entcore.common.controller.ConfController;
 import org.entcore.common.controller.RightsController;
 import org.entcore.common.elasticsearch.ElasticSearch;
@@ -46,6 +48,7 @@ import org.entcore.common.search.SearchingEvents;
 import org.entcore.common.search.SearchingHandler;
 import org.entcore.common.sql.DB;
 import org.entcore.common.sql.Sql;
+import org.entcore.common.sql.async.SqlAsync;
 import org.entcore.common.user.RepositoryEvents;
 import org.entcore.common.user.RepositoryHandler;
 import org.entcore.common.user.UserUtils;
@@ -177,6 +180,16 @@ public abstract class BaseServer extends Server {
 					config.getString("sql-address", "sql.persistor"));
 			schema = config.getString("db-schema", getPathPrefix(config).replaceAll("/", ""));
 			DB.loadScripts(schema, vertx, FileResolver.absolutePath(config.getString("init-scripts", "sql")));
+		}
+		if (config.getBoolean("sqlasync", false)) {
+			final JsonObject postgresConf;
+			if(config.getJsonObject("postgresConfig") != null) {
+				postgresConf = config.getJsonObject("postgresConfig");
+			} else {
+				postgresConf = new JsonObject((String) vertx.sharedData().getLocalMap("server").get("postgresConfig"));
+			}
+			SQLClient postgresSQLClient = PostgreSQLClient.createNonShared(vertx, postgresConf);
+			SqlAsync.getInstance().init(postgresSQLClient);
 		}
 		if (config.getBoolean("elasticsearch", false)) {
 			if (config.getJsonObject("elasticsearchConfig") != null) {

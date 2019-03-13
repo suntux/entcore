@@ -1,4 +1,5 @@
-/* Copyright © "Open Digital Education", 2014
+/*
+ * Copyright © "Open Digital Education", 2019
  *
  * This program is published by "Open Digital Education".
  * You must indicate the name of the software and the company in any production /contribution
@@ -13,35 +14,25 @@
  *
  * You should have received a copy of the GNU Affero General Public License along with the software.
  * If not, please see : <http://www.gnu.org/licenses/>. Full compliance requires reading the terms of this license and following its directives.
-
  *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  */
 
-package org.entcore.communication;
+package org.entcore.directory.services;
 
-import org.entcore.common.http.BaseServer;
-import org.entcore.communication.controllers.CommunicationController;
-import org.entcore.communication.filters.CommunicationFilter;
-import org.entcore.communication.services.CommunicationService;
-import org.entcore.communication.services.impl.DefaultCommunicationService;
-import org.entcore.communication.services.impl.SqlCommunicationService;
+import fr.wseduc.webutils.Either;
+import io.vertx.core.Handler;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
 
-public class Communication extends BaseServer {
+public interface MetaNetworkService  {
 
-	@Override
-	public void start() throws Exception {
-		super.start();
+	void createNode(JsonObject node, Handler<Either<String, JsonObject>> handler);
 
-		CommunicationController communicationController = new CommunicationController();
-		CommunicationService communicationService;
-		if (config.getBoolean("sqlasync", false)) {
-			communicationService = new SqlCommunicationService();
-		} else {
-			communicationService = new DefaultCommunicationService();
-		}
-		communicationController.setCommunicationService(communicationService);
-		addController(communicationController);
-		setDefaultResourceFilter(new CommunicationFilter());
-	}
+	void deleteNode(int nodeId, Handler<Either<String, JsonObject>> handler);
+
+	void listNodes(Handler<Either<String, JsonArray>> handler);
 
 }

@@ -1,7 +1,7 @@
 CREATE SCHEMA directory;
 
 CREATE TABLE directory.structures (
-	"id" VARCHAR(36) NOT NULL PRIMARY KEY,
+	"id" VARCHAR(42) NOT NULL PRIMARY KEY,
 	"external_id" VARCHAR(64) NOT NULL,
 	"uai" VARCHAR(8),
 	"name" VARCHAR(255),
@@ -12,13 +12,13 @@ CREATE TABLE directory.structures (
 );
 
 CREATE TABLE directory.classes (
-	"id" VARCHAR(36) NOT NULL PRIMARY KEY,
+	"id" VARCHAR(42) NOT NULL PRIMARY KEY,
 	"external_id" VARCHAR(128) NOT NULL,
 	"name" VARCHAR(255),
 	"created" TIMESTAMPTZ DEFAULT NOW(),
 	"modified" TIMESTAMPTZ DEFAULT NOW(),
 	"checksum" BIGINT,
-	"structure_id" VARCHAR(36) NOT NULL REFERENCES directory.structures (id) ON DELETE CASCADE
+	"structure_id" VARCHAR(42) NOT NULL REFERENCES directory.structures (id) ON DELETE CASCADE
 );
 
 CREATE TABLE directory.groups_types (
@@ -26,25 +26,38 @@ CREATE TABLE directory.groups_types (
 	"type" VARCHAR(16) NOT NULL
 );
 
-INSERT INTO directory.groups_types VALUES (1, 'ProfileGroup'), (2, 'FunctionalGroup'), (3, 'FunctionGroup'), (4, 'HTGroup'), (5, 'ManualGroup'), (6, 'CommunityGroup'), (7, 'DeleteGroup'), (8, 'RemoteGroup');
+INSERT INTO directory.groups_types VALUES (1, 'ProfileGroup'), (2, 'FunctionalGroup'), (3, 'FunctionGroup'), (4, 'HTGroup'), (5, 'ManualGroup'), (6, 'CommunityGroup'), (7, 'DeleteGroup');
+
+CREATE TABLE directory.remote_nodes (
+	"id" SMALLSERIAL PRIMARY KEY,
+	"prefix" VARCHAR (6) NOT NULL,
+	"name" VARCHAR(64) NOT NULL,
+	"client_id" VARCHAR(64) NOT NULL,
+	"secret" VARCHAR(64) NOT NULL,
+	"remote_client_id" VARCHAR(64) NOT NULL,
+	"remote_secret" VARCHAR(64) NOT NULL,
+	"uri" VARCHAR(255) NOT NULL
+);
 
 CREATE TABLE directory.groups (
-	"id" VARCHAR(36) NOT NULL PRIMARY KEY,
+	"id" VARCHAR(42) NOT NULL PRIMARY KEY,
 	"external_id" VARCHAR(64),
 	"name" VARCHAR(255) NOT NULL,
-	"nb_users" int,
+	"nb_users" INT,
 	"display_name_search_field" TSVECTOR,
 	"filter" VARCHAR(128),
 	"communique_user" VARCHAR(1) CHECK ("communique_user" IN ('B','I','O')),
 	"communique_relative_student" VARCHAR(1) CHECK ("communique_relative_student" IN ('B','I','O')),
 	"communique_with" JSONB,
+	"remote_communique_with" JSONB,
 	"created" TIMESTAMPTZ DEFAULT NOW(),
 	"modified" TIMESTAMPTZ DEFAULT NOW(),
 	"checksum" BIGINT,
-	"structure_id" VARCHAR(36) REFERENCES directory.structures (id) ON DELETE RESTRICT,
-	"class_id" VARCHAR(36) REFERENCES directory.classes (id) ON DELETE RESTRICT,
-	"parent_group_id" VARCHAR(36) REFERENCES directory.groups (id) ON DELETE RESTRICT,
-	"type_id" SMALLINT NOT NULL REFERENCES directory.groups_types (id) ON DELETE RESTRICT
+	"structure_id" VARCHAR(42) REFERENCES directory.structures (id) ON DELETE RESTRICT,
+	"class_id" VARCHAR(42) REFERENCES directory.classes (id) ON DELETE RESTRICT,
+	"parent_group_id" VARCHAR(42) REFERENCES directory.groups (id) ON DELETE RESTRICT,
+	"type_id" SMALLINT NOT NULL REFERENCES directory.groups_types (id) ON DELETE RESTRICT,
+	"remote_node_id" SMALLINT REFERENCES directory.remote_nodes (id) ON DELETE CASCADE
 );
 
 CREATE TABLE directory.profiles (
@@ -55,7 +68,7 @@ CREATE TABLE directory.profiles (
 INSERT INTO directory.profiles VALUES (1, 'Personnel'), (2, 'Teacher'), (3, 'Student'), (4, 'Relative'), (5, 'Guest'), (6, 'Tech');
 
 CREATE TABLE directory.users (
-	"id" VARCHAR(36) NOT NULL PRIMARY KEY,
+	"id" VARCHAR(42) NOT NULL PRIMARY KEY,
 	"external_id" VARCHAR(64) NOT NULL,
 	"display_name" VARCHAR(255) NOT NULL,
 	"display_name_search_field" TSVECTOR,
@@ -64,18 +77,19 @@ CREATE TABLE directory.users (
 	"profile" VARCHAR(16) NOT NULL,
 	"created" TIMESTAMPTZ DEFAULT NOW(),
 	"modified" TIMESTAMPTZ DEFAULT NOW(),
-	"checksum" BIGINT
+	"checksum" BIGINT,
+	"remote_node_id" SMALLINT REFERENCES directory.remote_nodes (id) ON DELETE CASCADE
 );
 
 CREATE TABLE directory.groups_users (
-	"group_id" VARCHAR(36) NOT NULL REFERENCES directory.groups (id) ON DELETE CASCADE,
-	"user_id" VARCHAR(36) NOT NULL REFERENCES directory.users (id) ON DELETE CASCADE,
+	"group_id" VARCHAR(42) NOT NULL REFERENCES directory.groups (id) ON DELETE CASCADE,
+	"user_id" VARCHAR(42) NOT NULL REFERENCES directory.users (id) ON DELETE CASCADE,
 	PRIMARY KEY (group_id, user_id)
 );
 
 CREATE TABLE directory.students_relatives (
-	"student_id" VARCHAR(36) NOT NULL REFERENCES directory.users (id) ON DELETE CASCADE,
-	"relative_id" VARCHAR(36) NOT NULL REFERENCES directory.users (id) ON DELETE CASCADE,
+	"student_id" VARCHAR(42) NOT NULL REFERENCES directory.users (id) ON DELETE CASCADE,
+	"relative_id" VARCHAR(42) NOT NULL REFERENCES directory.users (id) ON DELETE CASCADE,
 	PRIMARY KEY (student_id, relative_id)
 );
 

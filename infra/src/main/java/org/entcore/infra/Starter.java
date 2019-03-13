@@ -81,6 +81,10 @@ public class Starter extends BaseServer {
 			if (neo4jConfig != null) {
 				serverMap.put("neo4jConfig", neo4jConfig.encode());
 			}
+			JsonObject postgresConfig = config.getJsonObject("postgresConfig");
+			if (postgresConfig != null) {
+				serverMap.put("postgresConfig", postgresConfig.encode());
+			}
 			final String csp = config.getString("content-security-policy");
 			if (isNotEmpty(csp)) {
 				serverMap.put("contentSecurityPolicy", csp);

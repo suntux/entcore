@@ -34,11 +34,7 @@ import org.entcore.common.user.RepositoryHandler;
 import org.entcore.directory.controllers.*;
 import org.entcore.directory.security.DirectoryResourcesProvider;
 import org.entcore.directory.security.UserbookCsrfFilter;
-import org.entcore.directory.services.ClassService;
-import org.entcore.directory.services.GroupService;
-import org.entcore.directory.services.SchoolService;
-import org.entcore.directory.services.UserBookService;
-import org.entcore.directory.services.UserService;
+import org.entcore.directory.services.*;
 import org.entcore.directory.services.impl.*;
 
 import fr.wseduc.webutils.email.EmailSender;
@@ -150,6 +146,13 @@ public class Directory extends BaseServer {
         addController(slotProfileController);
 
         addController(new CalendarController());
+
+        if (config.getBoolean("meta-network", false)) {
+			MetaNetworkController metaNetworkController = new MetaNetworkController();
+			MetaNetworkService metaNetworkService = new DefaultMetaNetworkService();
+			metaNetworkController.setMetaNetworkService(metaNetworkService);
+			addController(metaNetworkController);
+		}
 
         vertx.eventBus().localConsumer("user.repository",
                 new RepositoryHandler(new UserbookRepositoryEvents(userBookService), eb));

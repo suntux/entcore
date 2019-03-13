@@ -32,8 +32,8 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.sql.ResultSet;
 import org.entcore.communication.services.CommunicationService;
-import org.entcore.communication.utils.SqlAsync;
-import org.entcore.communication.utils.SqlStreamToBatch;
+import org.entcore.common.sql.async.SqlAsync;
+import org.entcore.common.sql.async.SqlStreamToBatch;
 
 
 import java.util.ArrayList;

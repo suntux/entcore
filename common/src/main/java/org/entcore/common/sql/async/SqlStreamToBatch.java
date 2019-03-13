@@ -20,7 +20,7 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  */
 
-package org.entcore.communication.utils;
+package org.entcore.common.sql.async;
 
 import fr.wseduc.webutils.Either;
 import io.vertx.core.Handler;

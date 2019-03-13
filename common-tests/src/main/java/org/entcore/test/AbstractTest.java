@@ -20,19 +20,49 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  */
 
-package org.entcore.communication;
+package org.entcore.test;
 
+import io.restassured.RestAssured;
+import io.vertx.core.DeploymentOptions;
+import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
-import org.entcore.test.TestFilter;
+import io.vertx.ext.unit.TestContext;
 
-public class TestCommunicationVerticle extends Communication {
+import java.io.IOException;
+import java.net.ServerSocket;
 
-	@Override
-	public void start() throws Exception {
-		super.start();
-		clearFilters();
-		addFilter(new TestFilter(config.getJsonObject("test-session", new JsonObject())));
-		initModulesHelpers("");
+public class AbstractTest {
+
+	protected Vertx vertx;
+	protected Integer port;
+
+	public void setUp(TestContext context, String testVerticle, String pathPrefix) throws IOException {
+		vertx = Vertx.vertx();
+		ServerSocket socket = new ServerSocket(0);
+		port = socket.getLocalPort();
+		socket.close();
+
+		DeploymentOptions options = new DeploymentOptions()
+				.setConfig(new JsonObject().put("port", port).put("path-prefix", pathPrefix)
+						.put("neo4jConfig", new JsonObject().put("server-uri", "http://localhost:7474/db/data/"))
+						.put("sqlasync", true)
+						.put("postgresConfig", new JsonObject()
+								.put("host", "localhost")
+								.put("port", 5432)
+								.put("database", "ong")
+								.put("username", "web-education")
+								.put("password", "We_1234")
+						));
+
+		vertx.deployVerticle(testVerticle, options, context.asyncAssertSuccess());
+
+		RestAssured.baseURI = "http://localhost";
+		RestAssured.port = port;
+	}
+
+	public void tearDown(TestContext context) {
+		RestAssured.reset();
+		vertx.close(context.asyncAssertSuccess());
 	}
 
 }

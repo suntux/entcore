@@ -20,7 +20,7 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  */
 
-package org.entcore.communication;
+package org.entcore.test;
 
 import fr.wseduc.webutils.request.filter.Filter;
 import fr.wseduc.webutils.security.SecureHttpServerRequest;

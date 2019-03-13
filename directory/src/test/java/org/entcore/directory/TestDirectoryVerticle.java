@@ -1,4 +1,5 @@
-/* Copyright © "Open Digital Education", 2014
+/*
+ * Copyright © "Open Digital Education", 2019
  *
  * This program is published by "Open Digital Education".
  * You must indicate the name of the software and the company in any production /contribution
@@ -13,35 +14,34 @@
  *
  * You should have received a copy of the GNU Affero General Public License along with the software.
  * If not, please see : <http://www.gnu.org/licenses/>. Full compliance requires reading the terms of this license and following its directives.
-
  *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  */
 
-package org.entcore.communication;
+package org.entcore.directory;
 
+import fr.wseduc.webutils.collections.JsonObject;
 import org.entcore.common.http.BaseServer;
-import org.entcore.communication.controllers.CommunicationController;
-import org.entcore.communication.filters.CommunicationFilter;
-import org.entcore.communication.services.CommunicationService;
-import org.entcore.communication.services.impl.DefaultCommunicationService;
-import org.entcore.communication.services.impl.SqlCommunicationService;
+import org.entcore.directory.controllers.MetaNetworkController;
+import org.entcore.directory.services.MetaNetworkService;
+import org.entcore.directory.services.impl.DefaultMetaNetworkService;
+import org.entcore.test.TestFilter;
 
-public class Communication extends BaseServer {
+public class TestDirectoryVerticle extends BaseServer {
 
 	@Override
 	public void start() throws Exception {
 		super.start();
+		clearFilters();
+		addFilter(new TestFilter(config.getJsonObject("test-session", new JsonObject())));
+		initModulesHelpers("");
 
-		CommunicationController communicationController = new CommunicationController();
-		CommunicationService communicationService;
-		if (config.getBoolean("sqlasync", false)) {
-			communicationService = new SqlCommunicationService();
-		} else {
-			communicationService = new DefaultCommunicationService();
-		}
-		communicationController.setCommunicationService(communicationService);
-		addController(communicationController);
-		setDefaultResourceFilter(new CommunicationFilter());
+		MetaNetworkController metaNetworkController = new MetaNetworkController();
+		MetaNetworkService metaNetworkService = new DefaultMetaNetworkService();
+		metaNetworkController.setMetaNetworkService(metaNetworkService);
+		addController(metaNetworkController);
 	}
 
 }

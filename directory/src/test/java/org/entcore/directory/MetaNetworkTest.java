@@ -20,9 +20,11 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  */
 
-package org.entcore.communication;
+package org.entcore.directory;
 
+import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
+import io.restassured.response.Response;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.entcore.test.AbstractTest;
@@ -34,14 +36,15 @@ import org.junit.runner.RunWith;
 import java.io.IOException;
 
 import static io.restassured.RestAssured.*;
+import static io.restassured.matcher.RestAssuredMatchers.*;
 import static org.hamcrest.Matchers.*;
 
 @RunWith(VertxUnitRunner.class)
-public class CommunicationReadTest extends AbstractTest {
+public class MetaNetworkTest extends AbstractTest {
 
 	@Before
 	public void setUp(TestContext context) throws IOException {
-		setUp(context, TestCommunicationVerticle.class.getName(), "communication");
+		super.setUp(context, TestDirectoryVerticle.class.getName(), "directory");
 	}
 
 	@After
@@ -49,33 +52,50 @@ public class CommunicationReadTest extends AbstractTest {
 		super.tearDown(context);
 	}
 
-
 	@Test
-	public void checkComRulesRestAssured() {
+	public void createNodeTest() {
 		given()
-				.header("Test-Login", "isabelle.polonio")
-				.body("{\"search\":\"\",\"types\":[\"Group\"],\"structures\":[],\"classes\":[],\"profiles\":[],\"functions\":[],\"nbUsersInGroups\":true,\"groupType\":true}")
+				.header("Test-Login", "tom.mate")
+				.body("{\"prefix\":\"test\",\"name\":\"Serveur remote de test\",\"client_id\":\"titi\",\"secret\":\"toto\",\"remote_client_id\":\"blip\",\"remote_secret\":\"blop\",\"uri\":\"http://test\"}")
 		.when()
-				.post("/communication/visible")
+				.post("/directory/metanetwork/node")
 		.then()
 				.contentType(ContentType.JSON)
-				.statusCode(200)
-				.body("groups.size()", is(233))
-				.body("users.size()", is(0));
+				.statusCode(200);
 	}
 
 	@Test
-	public void checkComRulesRestAssuredLoginHeader() {
+	public void listNodeTest() {
 		given()
-				.header("Test-Login", "severine.alexandre")
-				.body("{\"search\":\"\",\"types\":[],\"structures\":[],\"classes\":[],\"profiles\":[],\"functions\":[],\"nbUsersInGroups\":true,\"groupType\":true}")
+				.header("Test-Login", "tom.mate")
+		.when()
+				.get("/directory/metanetwork/node/list")
+		.then()
+				.contentType(ContentType.JSON)
+				.statusCode(200)
+				.body("size()", greaterThan(0));
+	}
+
+	@Test
+	public void deleteNodeTest() {
+		Integer id = given()
+				.header("Test-Login", "tom.mate")
+				.body("{\"prefix\":\"test\",\"name\":\"Serveur remote de test\",\"client_id\":\"titi\",\"secret\":\"toto\",\"remote_client_id\":\"blip\",\"remote_secret\":\"blop\",\"uri\":\"http://test\"}")
 				.when()
-				.post("/communication/visible")
+				.post("/directory/metanetwork/node")
 				.then()
 				.contentType(ContentType.JSON)
 				.statusCode(200)
-				.body("groups.size()", is(234))
-				.body("users.size()", is(3279));
+				.extract()
+				.path("id");
+		given()
+				.header("Test-Login", "tom.mate")
+		.when()
+				.delete("/directory/metanetwork/node/" + id.toString())
+		.then()
+				.contentType(ContentType.JSON)
+				.statusCode(200)
+				.body("updated", is(1));
 	}
 
 }

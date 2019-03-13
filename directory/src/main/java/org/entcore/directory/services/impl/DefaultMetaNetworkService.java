@@ -20,19 +20,37 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  */
 
-package org.entcore.communication;
+package org.entcore.directory.services.impl;
 
+import fr.wseduc.webutils.Either;
+import io.vertx.core.Handler;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import org.entcore.test.TestFilter;
+import org.entcore.common.sql.async.SqlAsync;
+import org.entcore.directory.services.MetaNetworkService;
 
-public class TestCommunicationVerticle extends Communication {
+import static org.entcore.common.sql.async.SqlAsyncResult.validResultHandler;
+import static org.entcore.common.sql.async.SqlAsyncResult.validUniqueResultHandler;
+import static org.entcore.common.sql.async.SqlAsyncResult.validUpdateHandler;
+
+public class DefaultMetaNetworkService implements MetaNetworkService {
+
+	private final SqlAsync sqlAsync = SqlAsync.getInstance();
 
 	@Override
-	public void start() throws Exception {
-		super.start();
-		clearFilters();
-		addFilter(new TestFilter(config.getJsonObject("test-session", new JsonObject())));
-		initModulesHelpers("");
+	public void createNode(JsonObject node, Handler<Either<String, JsonObject>> handler) {
+		sqlAsync.insert("directory.remote_nodes", node, "id", validUniqueResultHandler(handler));
+	}
+
+	@Override
+	public void deleteNode(int nodeId, Handler<Either<String, JsonObject>> handler) {
+		sqlAsync.updateWithParams("DELETE FROM directory.remote_nodes WHERE id = ?",
+				new JsonArray().add(nodeId), validUpdateHandler(handler));
+	}
+
+	@Override
+	public void listNodes(Handler<Either<String, JsonArray>> handler) {
+		sqlAsync.query("SELECT * FROM directory.remote_nodes", validResultHandler(handler));
 	}
 
 }
