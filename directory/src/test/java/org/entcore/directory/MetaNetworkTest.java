@@ -27,6 +27,7 @@ import io.restassured.http.ContentType;
 import io.restassured.response.Response;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import org.entcore.directory.controllers.MetaNetworkController;
 import org.entcore.test.AbstractTest;
 import org.junit.After;
 import org.junit.Before;
@@ -44,7 +45,8 @@ public class MetaNetworkTest extends AbstractTest {
 
 	@Before
 	public void setUp(TestContext context) throws IOException {
-		super.setUp(context, TestDirectoryVerticle.class.getName(), "directory");
+		super.setUp(context, TestDirectoryVerticle.class, "directory",
+				"directory/out/test/resources", MetaNetworkController.class);
 	}
 
 	@After

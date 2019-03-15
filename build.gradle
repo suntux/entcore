@@ -287,6 +287,7 @@ project(':common-tests') {
     compile project(':common')
     compile "io.vertx:vertx-unit:$vertxVersion"
     compile "io.rest-assured:rest-assured:$restAssuredVersion"
+    compile "com.google.testing.compile:compile-testing:0.15"
   }
 }
 
