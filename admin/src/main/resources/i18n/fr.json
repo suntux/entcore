@@ -43,7 +43,6 @@
     "sources.multi.combo.title": "Sources",
     "functions.multi.combo.title": "Fonctions & matières",
     "functionalGroups.multi.combo.title": "Groupes d'enseignement",
-    "manualGroups.multi.combo.title": "Groupes manuels",
     "adml.multi.combo.title": "Administrateurs locaux",
     "ignore.activation": "Pas de filtre sur l'activation",
     "users.activated": "Utilisateurs activés",
@@ -201,9 +200,11 @@
     "groups": "Groupes",
     "applications": "Applications",
     "logout": "Déconnexion",
-    "manual.groups": "Groupes manuels",
-    "profile.groups": "Groupes de profil",
-    "functional.groups": "Groupes scolarité",
+    
+    "ManualGroup": "Groupes manuels",
+    "ProfileGroup": "Groupes de profil",
+    "FunctionalGroup": "Groupes scolarité",
+    
     "members.of.group": "Membres de",
     "members": "{{ count < 2 ? Membre : Membres }}",
     "add.relative": "Ajouter un responsable",

@@ -30,12 +30,15 @@ import java.util.List;
 
 public interface CommunicationService {
 	String IMPOSSIBLE_TO_CHANGE_DIRECTION = "impossible to change direction";
-
+	String WARNING_ENDGROUP_USERS_CAN_COMMUNICATE = "endgroup.users.can.communicate";
+	String WARNING_STARTGROUP_USERS_CAN_COMMUNICATE= "startgroup.users.can.communicate";
+	String WARNING_BOTH_GROUPS_USERS_CAN_COMMUNICATE = "groups.users.can.communicate";
+	
 	List<String> EXPECTED_TYPES = Arrays.asList(
 			"User", "Group", "ManualGroup", "ProfileGroup", "FunctionalGroup", "FunctionGroup", "HTGroup", "CommunityGroup");
 
 	//enum VisibleType { USERS, GROUPS, BOTH }
-	enum Direction { INCOMING, OUTGOING, BOTH }
+	enum Direction { INCOMING, OUTGOING, BOTH, NONE }
 
 	void addLink(String startGroupId, String endGroupId,
 			Handler<Either<String, JsonObject>> handler);
@@ -86,4 +89,10 @@ public interface CommunicationService {
 	void getGroupsReachableByGroup(String id, Handler<Either<String, JsonArray>> results);
 
 	void safelyRemoveLinkWithUsers(String groupId, Handler<Either<String, JsonObject>> handler);
+
+	void getDirections(String startGroupId, String endGroupId, Handler<Either<String, JsonObject>> handler);
+	
+	void checkAddLink(String startGroupId, String endGroupId, Handler<Either<String, JsonObject>> handler);
+	
+	void changeDirection(String startGroupId, String endGroupId, Handler<Either<String, JsonObject>> handler);
 }

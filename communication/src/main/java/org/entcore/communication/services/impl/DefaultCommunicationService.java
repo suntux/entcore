@@ -31,7 +31,9 @@ import org.entcore.common.neo4j.Neo4j;
 import org.entcore.common.neo4j.StatementsBuilder;
 import org.entcore.communication.services.CommunicationService;
 
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 import static org.entcore.common.neo4j.Neo4jResult.*;
@@ -40,7 +42,7 @@ public class DefaultCommunicationService implements CommunicationService {
 
 	private final Neo4j neo4j = Neo4j.getInstance();
 	private static final Logger log = LoggerFactory.getLogger(DefaultCommunicationService.class);
-
+	
 	@Override
 	public void addLink(String startGroupId, String endGroupId, Handler<Either<String, JsonObject>> handler) {
 		String query =
@@ -680,6 +682,109 @@ public class DefaultCommunicationService implements CommunicationService {
         });
     }
 
+    @Override
+    public void getDirections(String startGroupId, String endGroupId, Handler<Either<String, JsonObject>> handler) {
+    	String query = "MATCH (startGroup: Group {id: {startGroupId}}) " +
+    			"MATCH (endGroup: Group {id: {endGroupId}}) " +
+    			"RETURN startGroup.users as startDirection, endGroup.users as endDirection";
+    	
+    	JsonObject params = new JsonObject()
+    			.put("startGroupId", startGroupId)
+    			.put("endGroupId", endGroupId);
+    	
+    	neo4j.execute(query, params, validUniqueResultHandler(handler));
+    }
+
+    @Override
+	public void checkAddLink(String startGroupId, String endGroupId, Handler<Either<String, JsonObject>> handler) {
+		this.getDirections(startGroupId, endGroupId, either -> {
+			if (either.isLeft()) {
+				handler.handle(either);
+			} else {
+				JsonObject result = either.right().getValue();
+				Direction startDirection = this.getDirection(result.getString("startDirection"));
+				Direction endDirection = this.getDirection(result.getString("endDirection"));
+				
+				String warningMessage = this.computeWarningMessage(startDirection, endDirection);
+				
+				if (warningMessage != null) {
+					handler.handle(new Either.Left<String, JsonObject>(warningMessage));
+				} else {
+					handler.handle(new Either.Right<String, JsonObject>(new JsonObject().put("result", "ok")));
+				}
+			}			
+		});
+	}
+	
+	@Override
+	public void changeDirection(String startGroupId, String endGroupId, Handler<Either<String, JsonObject>> handler) {
+		this.getDirections(startGroupId, endGroupId, either -> {
+			if (either.isLeft()) {
+				handler.handle(either);
+			} else {
+				JsonObject result = either.right().getValue();
+				Direction startDirection = this.getDirection(result.getString("startDirection"));
+				Direction endDirection = this.getDirection(result.getString("endDirection"));
+				
+				Map<String, Direction> groupDirection = null;
+				
+				if (startDirection.equals(Direction.NONE) && endDirection.equals(Direction.NONE)) {
+					groupDirection = new HashMap<String, Direction>();
+					groupDirection.put(startGroupId, Direction.INCOMING);
+					groupDirection.put(endGroupId, Direction.OUTGOING);
+					this.updateDirection(groupDirection, handler);
+				} else if (startDirection.equals(Direction.BOTH) && endDirection.equals(Direction.NONE)
+						|| startDirection.equals(Direction.INCOMING) && endDirection.equals(Direction.NONE)) {
+					this.updateDirection(endGroupId, Direction.OUTGOING, handler);
+				} else if (startDirection.equals(Direction.BOTH) && endDirection.equals(Direction.INCOMING)
+						|| startDirection.equals(Direction.INCOMING) && endDirection.equals(Direction.INCOMING)) {
+					this.updateDirection(endGroupId, Direction.BOTH, handler);
+				} else if (startDirection.equals(Direction.OUTGOING) && endDirection.equals(Direction.NONE)) {
+					groupDirection = new HashMap<String, Direction>();
+					groupDirection.put(startGroupId, Direction.BOTH);
+					groupDirection.put(endGroupId, Direction.OUTGOING);
+					this.updateDirection(groupDirection, handler);
+				} else if (startDirection.equals(Direction.OUTGOING) && endDirection.equals(Direction.BOTH)
+						|| startDirection.equals(Direction.OUTGOING) && endDirection.equals(Direction.OUTGOING)) {
+					this.updateDirection(startGroupId, Direction.BOTH, handler);
+				} else if (startDirection.equals(Direction.OUTGOING) && endDirection.equals(Direction.INCOMING)) {
+					groupDirection = new HashMap<String, Direction>();
+					groupDirection.put(startGroupId, Direction.BOTH);
+					groupDirection.put(endGroupId, Direction.BOTH);
+					this.updateDirection(groupDirection, handler);
+				} else if (startDirection.equals(Direction.NONE) && endDirection.equals(Direction.OUTGOING)) {
+					this.updateDirection(startGroupId, Direction.INCOMING, handler);
+				} else if (startDirection.equals(Direction.NONE) && endDirection.equals(Direction.INCOMING)
+						|| startDirection.equals(Direction.NONE) && endDirection.equals(Direction.BOTH)) {
+					groupDirection = new HashMap<String, Direction>();
+					groupDirection.put(startGroupId, Direction.INCOMING);
+					groupDirection.put(endGroupId, Direction.BOTH);
+					this.updateDirection(groupDirection, handler);	
+				}
+			}			
+		});
+	}
+	
+	public void updateDirection(String groupId, Direction direction, Handler<Either<String, JsonObject>> handler) {
+		String query = "MATCH (g: Group {id: {groupId}}) SET g.users = {direction}";
+		JsonObject params = new JsonObject()
+				.put("groupId", groupId)
+				.put("direction", direction);
+		neo4j.execute(query, params, validEmptyHandler(handler));
+	}
+	
+	public void updateDirection(Map<String, Direction> groupDirection, Handler<Either<String, JsonObject>> handler) {
+		StatementsBuilder s = new StatementsBuilder();
+		groupDirection.forEach((groupId, direction) -> {
+			String query = "MATCH (g: Group {id: {groupId}}) SET g.users = {direction}";
+			JsonObject params = new JsonObject()
+					.put("groupId", groupId)
+					.put("direction", direction);
+			s.add(query, params);
+		});
+		neo4j.executeTransaction(s.build(), null, true, validEmptyHandler(handler));
+	}
+	
     public Direction computeDirectionToRemove(boolean hasIncomingRelationship, boolean hasOutgoingRelationship) {
         if (hasIncomingRelationship && hasOutgoingRelationship) {
             return null;
@@ -709,5 +814,27 @@ public class DefaultCommunicationService implements CommunicationService {
             return Direction.INCOMING;
         }
         return null;
+    }
+
+    private CommunicationService.Direction getDirection(String dbDirection) {
+		if ("".equals(dbDirection) || dbDirection == null) {
+			return CommunicationService.Direction.NONE;
+		} 
+		return CommunicationService.Direction.valueOf(dbDirection.toUpperCase());
+	}
+    
+    private String computeWarningMessage(Direction startDirection, Direction endDirection) {
+    	if (startDirection.equals(Direction.BOTH) && endDirection.equals(Direction.INCOMING)
+    			|| startDirection.equals(Direction.INCOMING) && endDirection.equals(Direction.INCOMING)
+    			|| startDirection.equals(Direction.NONE) && endDirection.equals(Direction.INCOMING)) {
+    		return CommunicationService.WARNING_ENDGROUP_USERS_CAN_COMMUNICATE;
+		} else if (startDirection.equals(Direction.OUTGOING) && endDirection.equals(Direction.BOTH)
+				|| startDirection.equals(Direction.OUTGOING) && endDirection.equals(Direction.OUTGOING)) {
+			return CommunicationService.WARNING_STARTGROUP_USERS_CAN_COMMUNICATE;
+		} else if (startDirection.equals(Direction.OUTGOING) && endDirection.equals(Direction.INCOMING)) {
+			return CommunicationService.WARNING_BOTH_GROUPS_USERS_CAN_COMMUNICATE;
+		}
+    	
+    	return null;
     }
 }

@@ -1,9 +1,10 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, OnInit } from '@angular/core';
 import { GroupModel } from '../../core/store/models';
 import { CommunicationRulesService } from './communication-rules.service';
 import { NotifyService } from '../../core/services';
 import { GroupNameService } from './group-name.service';
 import { Subject } from 'rxjs/Subject';
+import { UsersStore } from '../../users/users.store';
 import 'rxjs/add/operator/first';
 import 'rxjs/add/operator/do';
 import 'rxjs/add/operator/mergeMap';
@@ -38,7 +39,8 @@ export const communicationRulesLocators = {
                     [group]="group"
                     [selected]="isSelected('sending', group, selected)"
                     [highlighted]="isRelatedWithCell('sending', group, highlighted, communicationRules)"
-                    [active]="isRelatedWithCell('sending', group, selected, communicationRules)"></group-card>
+                    [active]="isRelatedWithCell('sending', group, selected, communicationRules)"
+                    (clickAddCommunication)="openGroupPicker($event)"></group-card>
                 </div>
             </div>
             <div class="communication-rules__column communication-rules__column--receiving ${css.receivingColumn}">
@@ -56,11 +58,30 @@ export const communicationRulesLocators = {
             </div>
         </div>
         <lightbox-confirm *ngIf="!!selected" title="user.communication.remove-communication.confirm.title"
-                          [show]="confirmationDisplayed"
+                          [show]="removeConfirmationDisplayed"
                           (onCancel)="confirmationClicked.next('cancel')"
                           (onConfirm)="confirmationClicked.next('confirm')">
             <span [innerHTML]="'user.communication.remove-communication.confirm.content' | translate: {groupName: groupNameService.getGroupName(selected.group)}"></span>
-        </lightbox-confirm>`,
+        </lightbox-confirm>
+
+        <lightbox-confirm *ngIf="!!selected" title="user.communication.add-communication.confirm.title"
+                          [show]="addConfirmationDisplayed"
+                          (onCancel)="confirmationClicked.next('cancel')"
+                          (onConfirm)="confirmationClicked.next('confirm')">
+            <span [innerHTML]="'user.communication.add-communication.confirm.content' | translate: {groupName: groupNameService.getGroupName(selected.group)}"></span>
+        </lightbox-confirm>
+        
+        <group-picker title="services.roles.groups.add"
+            [list]="groupPickList"
+            [filters]="filterGroups"
+            [types]="['ProfileGroup', 'FunctionalGroup', 'ManualGroup']"
+            [show]="showGroupPicker"
+            sort="name"
+            searchPlaceholder="search.group"
+            noResultsLabel="list.results.no.groups"
+            (pick)="createRule($event)"
+            (close)="showGroupPicker = false;">
+        </group-picker>`,
     styles: [`
         .communication-rules__header {
             color: #2a9cc8;
@@ -91,7 +112,7 @@ export const communicationRulesLocators = {
         }
     `]
 })
-export class CommunicationRulesComponent {
+export class CommunicationRulesComponent implements OnInit {
 
     @Input()
     public communicationRules: CommunicationRule[];
@@ -99,16 +120,26 @@ export class CommunicationRulesComponent {
     public selected: Cell;
     public highlighted: Cell;
 
-    public confirmationDisplayed = false;
+    public removeConfirmationDisplayed = false;
+    public addConfirmationDisplayed = false;
     public confirmationClicked: Subject<'confirm' | 'cancel'> = new Subject<'confirm' | 'cancel'>();
+
+    selectedGroupForAddRule: GroupModel;
+    showGroupPicker: boolean;
+    groupPickList: GroupModel[];
 
     constructor(private communicationRulesService: CommunicationRulesService,
                 private notifyService: NotifyService,
-                public groupNameService: GroupNameService) {
+                public groupNameService: GroupNameService,
+                private usersStore: UsersStore) {
+    }
+
+    ngOnInit(): void {
+        this.groupPickList = this.usersStore.structure.groups.data;
     }
 
     public select(column: Column, group: GroupModel): void {
-        this.selected = {column, group};
+        this.selected = { column, group };
         this.resetHighlight();
     }
 
@@ -159,10 +190,10 @@ export class CommunicationRulesComponent {
     }
 
     public removeCommunication(sender: GroupModel, receiver: GroupModel) {
-        this.confirmationDisplayed = true;
+        this.removeConfirmationDisplayed = true;
         this.confirmationClicked.asObservable()
             .first()
-            .do(() => this.confirmationDisplayed = false)
+            .do(() => this.removeConfirmationDisplayed = false)
             .filter(choice => choice === 'confirm')
             .mergeMap(() => this.communicationRulesService.removeCommunication(sender, receiver))
             .subscribe(() => this.notifyService.success({
@@ -172,6 +203,25 @@ export class CommunicationRulesComponent {
                 key: 'user.communication.remove-communication.error.content',
                 parameters: {groupName: this.groupNameService.getGroupName(sender)}
             }, 'user.communication.remove-communication.error.title'));
+    }
+
+    public openGroupPicker(group: GroupModel): void {
+        this.showGroupPicker = true;
+        this.selectedGroupForAddRule = group;
+    }
+
+    public filterGroups = (group: GroupModel) => {
+        if (this.selectedGroupForAddRule) {
+            return !this.communicationRules
+                .find(commRule => commRule.sender.id == this.selectedGroupForAddRule.id)
+                .receivers.find(receiver => receiver.id === group.id);
+        }
+        return true;
+    };
+
+    public createRule(receiver: GroupModel) {
+        this.communicationRulesService.createRule(this.selectedGroupForAddRule, receiver)
+            .subscribe(res => console.log(res));
     }
 }
 

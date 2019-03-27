@@ -46,6 +46,7 @@ import org.entcore.communication.services.impl.DefaultCommunicationService;
 import java.util.List;
 
 import static fr.wseduc.webutils.Utils.isNotEmpty;
+import static fr.wseduc.webutils.request.RequestUtils.bodyToJson;
 import static org.entcore.common.http.response.DefaultResponseHandler.*;
 
 public class CommunicationController extends BaseController {
@@ -536,4 +537,37 @@ public class CommunicationController extends BaseController {
             }
         });
     }
+
+	@Post("/v2/group/:startGroupId/communique/:endGroupId")
+	public void addLinkWithCheck(HttpServerRequest request) {
+		bodyToJson(request, body -> {
+			Params params = new Params(request).validate();
+			if (params.isInvalid()) return;
+	
+			if (body.getBoolean("force")) {
+				communicationService.addLink(params.getStartGroupId(), params.getEndGroupId(), event -> {
+					if (event.isLeft()) {
+						Renders.renderJson(request, new JsonObject().put("error", event.left().getValue()), 500);
+					} else {
+						communicationService.changeDirection(params.getStartGroupId(), params.getEndGroupId(), eventChange -> {
+							if (event.isLeft()) {
+								Renders.renderJson(request, new JsonObject().put("error", event.left().getValue()), 500);
+							} else {
+								Renders.renderJson(request, eventChange.right().getValue(), 200);
+							}
+						});
+					}
+				});
+			} else {
+				communicationService.checkAddLink(params.getStartGroupId(), params.getEndGroupId(), event -> {
+					if (event.isLeft()) {
+						String warning = event.left().getValue();
+						Renders.renderJson(request, new JsonObject().put("warning", warning), 409);
+					} else {
+						Renders.renderJson(request, event.right().getValue(), 200);
+					}
+				});
+			}
+		});
+	}
 }

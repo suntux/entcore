@@ -64,6 +64,13 @@ export class CommunicationRulesService {
                 }
             });
     }
+    
+    public createRule(sender: GroupModel, receiver: GroupModel): Observable<string> {
+        console.log('sender', sender);
+        console.log('receiver', receiver);
+
+        return this.http.post<string>(`/communication/v2/group/${sender.id}/communique/${receiver.id}`, {force: false});
+    }
 
     private getCommunicationRulesOfGroup(sender: GroupModel): Observable<CommunicationRule> {
         return this.http.get<GroupModel[]>(`/communication/group/${sender.id}/outgoing`)
@@ -84,3 +91,4 @@ export class CommunicationRulesService {
         }));
     }
 }
+
