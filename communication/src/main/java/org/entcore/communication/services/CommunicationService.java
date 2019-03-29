@@ -86,4 +86,6 @@ public interface CommunicationService {
 	void getGroupsReachableByGroup(String id, Handler<Either<String, JsonArray>> results);
 
 	void safelyRemoveLinkWithUsers(String groupId, Handler<Either<String, JsonObject>> handler);
+
+	void removeRelations(String startGroupId, String endGroupId, Handler<Either<String, JsonObject>> handler);
 }
