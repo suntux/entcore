@@ -24,8 +24,8 @@ export const communicationRulesLocators = {
     selector: 'communication-rules',
     template: `
         <div class="communication-rules__headers">
-                <span class="communication-rules__header communication-rules__header--sending">{{ 'user.communication.groups-of-user' | translate }}</span>
-                <span class="communication-rules__header communication-rules__header--receiving">{{ 'user.communication.groups-that-user-can-communicate-with' | translate }}</span>
+                <span class="communication-rules__header communication-rules__header--sending">{{ sendingHeaderLabel }}</span>
+                <span class="communication-rules__header communication-rules__header--receiving">{{ receivingHeaderLabel }}</span>
         </div>
         <div class="communication-rules__columns">
             <div class="communication-rules__column communication-rules__column--sending ${css.sendingColumn}">
@@ -92,6 +92,11 @@ export const communicationRulesLocators = {
     `]
 })
 export class CommunicationRulesComponent {
+    @Input()
+    public sendingHeaderLabel: string = '';
+
+    @Input()
+    public receivingHeaderLabel: string = '';
 
     @Input()
     public communicationRules: CommunicationRule[];

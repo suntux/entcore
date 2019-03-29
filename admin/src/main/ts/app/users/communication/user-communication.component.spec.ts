@@ -110,5 +110,11 @@ function getBackButton(fixture: ComponentFixture<UserCommunicationComponent>): D
 })
 class MockCommunicationRulesComponent {
     @Input()
+    sendingHeaderLabel: string;
+
+    @Input()
+    receivingHeaderLabel: string;
+
+    @Input()
     communicationRules: CommunicationRule[];
 }
