@@ -50,11 +50,11 @@ describe('GroupPickerComponent', () => {
         expect(getFilterButtons(fixture).length).toBe(3);
     });
 
-    it(`should emit a 'onPick' event when the list onSelect event is emitted with the given group`, () => {
+    it(`should emit a 'pick' event when the list onSelect event is emitted with the given group`, () => {
         let result: GroupModel = {id: '', name: ''} as GroupModel;
         const givenGroup: GroupModel = {id: 'group1', name: 'group1'} as GroupModel;
         
-        component.onPick.subscribe((event: GroupModel) => result = event);
+        component.pick.subscribe((event: GroupModel) => result = event);
         mockListComponent.onSelect.emit(givenGroup);
         expect(result.id).toBe('group1');
     });

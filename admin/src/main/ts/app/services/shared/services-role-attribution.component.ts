@@ -33,7 +33,7 @@ export class ServicesRoleAttributionComponent implements OnInit {
     @Input() noResultsLabel: string;
     @Input() selectedRole: RoleModel;
 
-    @Output("close") close: EventEmitter<any> = new EventEmitter();
+    @Output("close") close: EventEmitter<void> = new EventEmitter();
     @Output("add") add: EventEmitter<GroupModel> = new EventEmitter<GroupModel>();
     @Output("inputChange") inputChange: EventEmitter<string> = new EventEmitter<string>();
 

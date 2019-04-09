@@ -269,19 +269,19 @@ describe('CommunicationRulesComponent', () => {
     describe('removeCommunication', () => {
         it('should ask for confirmation', () => {
             component.removeCommunication(generateGroup('group1'), generateGroup('group2'));
-            expect(component.confirmationDisplayed).toBe(true);
+            expect(component.removeConfirmationDisplayed).toBe(true);
         });
         it('should close the lightbox if the user cancel', () => {
             component.removeCommunication(generateGroup('group1'), generateGroup('group2'));
             component.confirmationClicked.next('cancel');
             expect(communicationRulesService.removeCommunication).not.toHaveBeenCalled();
-            expect(component.confirmationDisplayed).toBe(false);
+            expect(component.removeConfirmationDisplayed).toBe(false);
         });
         it('should call the communicationRulesService.removeCommunication if the user confirms', () => {
             component.removeCommunication(generateGroup('group1'), generateGroup('group2'));
             component.confirmationClicked.next('confirm');
             expect(communicationRulesService.removeCommunication).toHaveBeenCalled();
-            expect(component.confirmationDisplayed).toBe(false);
+            expect(component.removeConfirmationDisplayed).toBe(false);
         });
     });
 });
